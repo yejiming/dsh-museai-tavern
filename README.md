@@ -16,17 +16,6 @@
 - **设置页**：全部系统提示词（逐字复制 MuseAI 默认值，可编辑/重置）与 Agent 采样参数（temperature / maxOutputTokens / maxContextTokens / thinkingDepth 等）；**模型区域为「DSH 模型选择」**：跟随 DSH 默认模型，或从 DSH 已配置的 provider/model 目录中挑选，无任何 baseUrl / API Key / 连接测试。
 - **持久化**：数据（世界书、角色卡、会话、设置、风格预设）经插件服务端存储域落盘 `$DSH_HOME/storages/museai.json`（storage-domain json backend），浏览器 localStorage 仅作离线镜像；重启不丢。
 
-## 与 MuseAI 的差异
-
-| 项 | MuseAI 桌面 | 本插件 |
-|---|---|---|
-| 背景页 AI 智能提取世界书/角色卡 | 有 | **无**（按要求排除） |
-| 模型配置 | 服务商/baseUrl/API Key/连接测试 | **DSH 模型目录**（自带默认或已配置模型） |
-| 生成通道 | Rust agent loop（OpenAI/Anthropic 直连） | 服务端 `ctx.llm.stream`（DSH 适配器 + 密钥） |
-| 工具循环 | 有（read/write/bash 等） | 无（聊天本就 `allowedTools: []`；冒险 `role_play` 以文本标记渲染；封存记忆/标题/浓缩为一次性调用） |
-| 采样参数 | temperature/maxTokens/thinkingDepth/frequencyPenalty/presencePenalty/topP | temperature/maxTokens/thinkingDepth 透传；**frequencyPenalty/presencePenalty/topP 由 DSH 模型默认** |
-| 持久化 | `<文档>/MuseAI/config/*.json`（Tauri） | `$DSH_HOME/storages/museai.json`（storage-domain） |
-
 ## 快速安装
 
 仓库已提交构建产物 `lib/`（不设 `prepare`/`prepack` 脚本），git、tarball 与本地目录安装都直接使用产物，无需在安装时构建。

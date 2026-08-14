@@ -14,17 +14,6 @@ Adds a **MuseAI** tab to the right of the Trajectory tab in DeepSeek Harness's c
 - **Settings page**: all system prompts (copied verbatim from MuseAI's defaults; editable / resettable) and per-agent sampling parameters (temperature / maxOutputTokens / maxContextTokens / thinkingDepth, …); the **model area is a "DSH model picker"**: follow the DSH default model, or pick any provider/model from DSH's configured catalog — no baseUrl / API key / connectivity test anywhere.
 - **Persistence**: data (world books, character cards, sessions, settings, style presets) is persisted server-side through the plugin's storage domain at `$DSH_HOME/storages/museai.json` (storage-domain json backend), with browser localStorage only as an offline mirror; survives restarts.
 
-## Differences from MuseAI
-
-| Item | MuseAI desktop | This plugin |
-|---|---|---|
-| Background AI extraction (world book / character card) | yes | **no** (excluded per requirements) |
-| Model configuration | provider / baseUrl / API key / test | **DSH model catalog** (default or configured models) |
-| Generation channel | Rust agent loop (OpenAI/Anthropic direct) | server `ctx.llm.stream` (DSH adapters + keys) |
-| Tool loop | yes (read/write/bash/…) | no (chat already used `allowedTools: []`; adventure's `role_play` renders as text markers; archiving / titles / distillation are one-shot calls) |
-| Sampling parameters | temperature / maxTokens / thinkingDepth / frequencyPenalty / presencePenalty / topP | temperature / maxTokens / thinkingDepth pass through; **frequencyPenalty / presencePenalty / topP fall back to DSH model defaults** |
-| Persistence | `<Documents>/MuseAI/config/*.json` (Tauri) | `$DSH_HOME/storages/museai.json` (storage-domain) |
-
 ## Quick install
 
 The repo commits the built `lib/` artifacts (no `prepare`/`prepack` scripts), so git, tarball, and local-directory installs use the artifacts directly — no build needed at install time.
