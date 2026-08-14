@@ -1,0 +1,121 @@
+# MuseAI Tavern · MuseAI tab for DeepSeek Harness
+
+**中文** | [English](README.en.md)
+
+Adds a **MuseAI** tab to the right of the Trajectory tab in DeepSeek Harness's conversation tab bar, bringing MuseAI's five desktop pages (Background / Chat / Adventure / Bond / Settings) into the DSH web GUI, with every model call reusing DSH's own model configuration — **no separate API / key configuration**.
+
+## Features
+
+- **MuseAI conversation-view tab**: registered on the `conversation.view` slot (order 15, right of Trajectory at order 10); the session pane renders the MuseAI view with its own five-page navigation (Background / Chat / Adventure / Bond / Settings).
+- **Background page** (without the AI extraction of world books / character cards): manual world-book / character-card management (custom fields, character-card tree grouped by world book), JSON import/export, MuseAI / SillyTavern dual-format export with SillyTavern conversion preview, style presets, AI memory distillation, world-book deletion (with or without its cards).
+- **Chat page**: partner roleplay. Bind a world book + character card, streaming conversation (Markdown + collapsible thinking + stop), session history / title editing, style presets, memory archiving, context usage ring.
+- **Adventure page**: text adventure / GM storytelling. World book + multi character-card selection (checking a world book brings out its cards), dynamic role loading, three input modes, streaming story with `[[TOOL]]` bubbles and `<choices>` candidate buttons, multi-card memory archiving, session saving.
+- **Bond page**: relationship overview, bond timeline, linked chat / adventure sessions.
+- **Settings page**: all system prompts (copied verbatim from MuseAI's defaults; editable / resettable) and per-agent sampling parameters (temperature / maxOutputTokens / maxContextTokens / thinkingDepth, …); the **model area is a "DSH model picker"**: follow the DSH default model, or pick any provider/model from DSH's configured catalog — no baseUrl / API key / connectivity test anywhere.
+- **Persistence**: data (world books, character cards, sessions, settings, style presets) is persisted server-side through the plugin's storage domain at `$DSH_HOME/storages/museai.json` (storage-domain json backend), with browser localStorage only as an offline mirror; survives restarts.
+
+## Differences from MuseAI
+
+| Item | MuseAI desktop | This plugin |
+|---|---|---|
+| Background AI extraction (world book / character card) | yes | **no** (excluded per requirements) |
+| Model configuration | provider / baseUrl / API key / test | **DSH model catalog** (default or configured models) |
+| Generation channel | Rust agent loop (OpenAI/Anthropic direct) | server `ctx.llm.stream` (DSH adapters + keys) |
+| Tool loop | yes (read/write/bash/…) | no (chat already used `allowedTools: []`; adventure's `role_play` renders as text markers; archiving / titles / distillation are one-shot calls) |
+| Sampling parameters | temperature / maxTokens / thinkingDepth / frequencyPenalty / presencePenalty / topP | temperature / maxTokens / thinkingDepth pass through; **frequencyPenalty / presencePenalty / topP fall back to DSH model defaults** |
+| Persistence | `<Documents>/MuseAI/config/*.json` (Tauri) | `$DSH_HOME/storages/museai.json` (storage-domain) |
+
+## Quick install
+
+The repo commits the built `lib/` artifacts (no `prepare`/`prepack` scripts), so git, tarball, and local-directory installs use the artifacts directly — no build needed at install time.
+
+```sh
+# from the local source directory (development)
+dsh plugin --profile demo add .
+
+# from git
+dsh plugin --profile demo add github:omdsh-dev/dsh-museai-tavern
+
+# from npm
+dsh plugin --profile demo add @yejiming/dsh-museai-tavern
+```
+
+Verify after install:
+
+```sh
+dsh --profile demo --dump-config   # should list the museai and museai-routes rows
+```
+
+Start the web GUI:
+
+```sh
+dsh --profile demo
+```
+
+In the web GUI: open any session → the **MuseAI** tab appears right of Trajectory → check the Settings page for the model (defaults to following DSH's default model, or pick from the catalog) → create a world book / character card in Background → chat with a character, run an adventure, inspect relationships in Bond.
+
+> Model prerequisite: DSH must have at least one configured model (provider/model); otherwise the settings page shows an empty-state hint and generation requests return an error.
+
+## Architecture
+
+```text
+Browser (apps/web)                       Host process (dsh --profile demo)
+┌─────────────────────────────┐          ┌──────────────────────────────────────┐
+│ MuseAI view (conversation.  │  fetch   │ @yejiming/dsh-museai-tavern (host row)│
+│  .view, order 15)           │ ───────▶ │  · museaiStore service (domain/mem)  │
+│  · Background/Chat/Adventure│          │ @yejiming/dsh-museai-tavern/routes    │
+│  · Bond/Settings (DSH model │          │  · /plugins/museai/models|chat|       │
+│    picker)                  │          │    complete|store/*|sessions/*        │
+│  · zustand + syncStorage    │          └──────────────┬───────────────────────┘
+└─────────────────────────────┘                         │ ctx.llm (DSH models)
+                                                        ▼
+                                     DeepSeek / other configured adapters
+```
+
+One npm package, two mount faces, two host rows:
+
+| Face | Entry | Mounted by |
+|---|---|---|
+| Host row (store service / config) | `lib/index.js` (row `museai`) | host composition: opens the `museai` storage domain (memory fallback on failure), provides `museaiStore`; headless-safe |
+| Routes row (model bridge / store / sessions) | `lib/routes.js` (row `museai-routes`) | host composition: registers `/plugins/museai/*` via nested inject where a webserver exists; skipped headless |
+| Browser half (tab / pages) | `lib/client.js` (`dsh.client` declaration) | browser: registers the MuseAI tab and its five pages |
+
+## Configuration
+
+Every field has a loader default; no library defaults; **no credential fields**.
+
+| Key | Meaning |
+|---|---|
+| `chatTimeoutMs` | end-to-end streaming timeout (default 120000 ms) |
+| `completeTimeoutMs` | one-shot completion timeout (default 120000 ms) |
+| `modelsTimeoutMs` | model-catalog interrogation timeout (default 10000 ms) |
+| `maxCompleteChars` | captured non-streaming output cap (default 20000 chars) |
+
+```yaml
+# cordis.patch.yml or profile-layer override example
+- id: museai
+  config:
+    chatTimeoutMs: 180000
+```
+
+## HTTP surface (used by the browser half)
+
+- `GET  /plugins/museai/models` — DSH model catalog `{groups, failures, defaultSelection}`
+- `POST /plugins/museai/chat` — streaming generation (NDJSON: start/delta/thinking_delta/done/error/aborted)
+- `POST /plugins/museai/complete` — one-shot generation `{text, reasoning}`
+- `GET/PUT /plugins/museai/store/<key>` — one store blob (settings/partners/partnerChat/story/stylePresets/agent)
+- `GET /plugins/museai/sessions/<kind>` and `GET/PUT/DELETE .../sessions/<kind>/<id>` — session records (kind=partner|story)
+
+## Development
+
+```sh
+pnpm install
+pnpm build        # tsdown both halves + type declarations
+pnpm typecheck    # server-side typecheck (client below)
+npx tsc -p tsconfig.client.json --noEmit   # client typecheck
+pnpm test         # vitest (server routes / storage domain + ported utils)
+```
+
+## License
+
+MIT

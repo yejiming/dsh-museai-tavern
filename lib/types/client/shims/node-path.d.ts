@@ -1,0 +1,43 @@
+export declare function basename(path: string): string;
+export declare function dirname(path: string): string;
+export declare function extname(path: string): string;
+export declare function join(...parts: string[]): string;
+export declare function resolve(...parts: string[]): string;
+export declare function isAbsolute(path: string): boolean;
+export declare function relative(from: string, to: string): string;
+export declare function normalize(path: string): string;
+export declare function sep(): string;
+export declare const posix: {
+    basename: typeof basename;
+    dirname: typeof dirname;
+    extname: typeof extname;
+    join: typeof join;
+    resolve: typeof resolve;
+    isAbsolute: typeof isAbsolute;
+    relative: typeof relative;
+    normalize: typeof normalize;
+    sep: typeof sep;
+};
+declare const _default: {
+    basename: typeof basename;
+    dirname: typeof dirname;
+    extname: typeof extname;
+    join: typeof join;
+    resolve: typeof resolve;
+    isAbsolute: typeof isAbsolute;
+    relative: typeof relative;
+    normalize: typeof normalize;
+    sep: typeof sep;
+    posix: {
+        basename: typeof basename;
+        dirname: typeof dirname;
+        extname: typeof extname;
+        join: typeof join;
+        resolve: typeof resolve;
+        isAbsolute: typeof isAbsolute;
+        relative: typeof relative;
+        normalize: typeof normalize;
+        sep: typeof sep;
+    };
+};
+export default _default;

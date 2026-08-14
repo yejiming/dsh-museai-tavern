@@ -1,0 +1,1000 @@
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { createSyncStorage } from '../syncStorage';
+
+export interface CustomField {
+  id: string;
+  moduleId: string;
+  label: string;
+  value: string;
+}
+
+export interface PartnerItemFields {
+  // 世界书字段
+  theme?: string;         // 主题
+  era?: string;           // 时代
+  techLevel?: string;     // 科技水平
+  magicLevel?: string;    // 魔法水平
+  geography?: string;     // 地理格局
+  keyScenes?: string;     // 关键场景
+  culturalFeatures?: string; // 文化特色
+  history?: string;       // 历史事件
+  conflict?: string;      // 核心矛盾
+
+  // 角色卡字段
+  // 基础信息
+  name?: string;          // 姓名
+  age?: string;           // 年龄
+  gender?: string;        // 性别
+  race?: string;          // 种族
+  birthplace?: string;    // 出生地
+  occupation?: string;    // 职业
+  socialClass?: string;   // 社会阶层
+  
+  // 身份标签
+  identityTags?: string[]; // 身份标签
+  
+  // 外貌气质
+  heightBuild?: string;     // 身高体型
+  iconicFeatures?: string;  // 标志性特征
+  clothingStyle?: string;   // 衣着风格
+  overallVibe?: string;     // 整体气质
+
+  // 性格
+  externalPersonality?: string; // 外在性格
+  internalPersonality?: string; // 内在性格
+  coreDesire?: string;          // 核心欲望
+  fearWeakness?: string;        // 恐惧和弱点
+  moralValues?: string;         // 道德观念
+  quirk?: string;               // 怪癖
+
+  // 技能专长
+  skills?: string;
+  
+  // 背景故事
+  backgroundStory?: string;
+  
+  // 人际关系
+  relationships?: string;
+  
+  // 说话方式
+  speakingStyle?: string;
+  
+  // 典型反应
+  typicalReactions?: string;
+
+  // 角色记忆
+  relationMemory?: string; // 关系记忆 (向下兼容保留)
+  userRelationType?: string; // 与用户关系类型
+  userInteractionModel?: string; // 与用户相处模式
+  userRelationBottomLine?: string; // 与用户关系底线
+  keyEvents?: string;      // 关键事件
+
+  // 自定义字段
+  customFields?: CustomField[];
+}
+
+export interface PartnerItem {
+  id: string;
+  name: string;
+  type: 'world_book' | 'character_card';
+  content: string;
+  fields?: PartnerItemFields;
+  worldBookId?: string | null;
+}
+
+export type PartnerImportExportType = 'world_book' | 'character_card';
+
+export interface PartnerItemsPackage {
+  schema: 'museai.partner-items';
+  version: 1;
+  exportedAt: string;
+  worldBooks: Array<{
+    id?: string;
+    name: string;
+    fields?: PartnerItemFields;
+  }>;
+  characterCards: Array<{
+    id?: string;
+    name: string;
+    fields?: PartnerItemFields;
+    worldBookId?: string | null;
+  }>;
+}
+
+export interface PartnerImportResult {
+  worldBookIds: string[];
+  characterCardIds: string[];
+  failedCount?: number;
+}
+
+interface PartnerState {
+  worldBooks: PartnerItem[];
+  characterCards: PartnerItem[];
+  selectedId: string | null;
+  selectedType: 'world_book' | 'character_card' | null;
+  addWorldBook: () => void;
+  addCharacterCard: () => void;
+  selectItem: (id: string | null, type: 'world_book' | 'character_card' | null) => void;
+  deleteItem: (id: string, type: 'world_book' | 'character_card') => void;
+  deleteWorldBookWithCharacterCards: (id: string) => void;
+  updateItemName: (id: string, type: 'world_book' | 'character_card', name: string) => void;
+  updateItemContent: (id: string, type: 'world_book' | 'character_card', content: string) => void;
+  updateItemFields: (id: string, type: 'world_book' | 'character_card', fields: PartnerItemFields) => void;
+  updateCharacterCardWorldBook: (id: string, worldBookId: string | null) => void;
+  addCustomField: (id: string, type: 'world_book' | 'character_card', moduleId: string) => void;
+  updateCustomField: (id: string, type: 'world_book' | 'character_card', fieldId: string, updates: Partial<Pick<CustomField, 'label' | 'value'>>) => void;
+  removeCustomField: (id: string, type: 'world_book' | 'character_card', fieldId: string) => void;
+  importGeneratedItems: (items: {
+    worldBooks: Array<{ name: string; fields: PartnerItemFields }>;
+    characterCards: Array<{ name: string; fields: PartnerItemFields; worldBookId?: string | null }>;
+  }) => { worldBookIds: string[]; characterCardIds: string[] };
+  exportPartnerItems: (type: PartnerImportExportType) => PartnerItemsPackage;
+  exportPartnerItem: (type: PartnerImportExportType, id: string) => PartnerItemsPackage;
+  exportPartnerItemBundle: (type: PartnerImportExportType, id: string) => PartnerItemsPackage;
+  importPartnerItemsPackage: (packageText: string, type: PartnerImportExportType) => PartnerImportResult;
+  importPartnerItemsPackages: (packageTexts: string[], type: PartnerImportExportType) => PartnerImportResult;
+}
+
+const MODULE_NAMES: Record<string, string> = {
+  world_basic: '基本世界设定',
+  world_core: '核心世界观架构',
+  char_basic: '基础与标签',
+  char_appearance: '外貌与性格',
+  char_ability: '能力与经历',
+  char_memory: '角色记忆',
+};
+
+const fieldToText = (value: unknown): string => {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => {
+        const text = fieldToText(item);
+        return text ? [text] : [];
+      })
+      .join('\n');
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value, null, 2);
+  }
+  return '';
+};
+
+const normalizeCustomFields = (fields?: CustomField[]): CustomField[] | undefined => {
+  if (!Array.isArray(fields)) return undefined;
+  return fields.map((field) => ({
+    id: fieldToText(field.id) || `cf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    moduleId: fieldToText(field.moduleId),
+    label: fieldToText(field.label) || '自定义字段',
+    value: fieldToText(field.value),
+  }));
+};
+
+export const normalizePartnerFields = (fields?: PartnerItemFields): PartnerItemFields => {
+  const source = (fields || {}) as Record<string, unknown>;
+  const normalized: PartnerItemFields = {};
+  const textFields = [
+    'theme',
+    'era',
+    'techLevel',
+    'magicLevel',
+    'geography',
+    'keyScenes',
+    'culturalFeatures',
+    'history',
+    'conflict',
+    'name',
+    'age',
+    'gender',
+    'race',
+    'birthplace',
+    'occupation',
+    'socialClass',
+    'heightBuild',
+    'iconicFeatures',
+    'clothingStyle',
+    'overallVibe',
+    'externalPersonality',
+    'internalPersonality',
+    'coreDesire',
+    'fearWeakness',
+    'moralValues',
+    'quirk',
+    'skills',
+    'backgroundStory',
+    'relationships',
+    'speakingStyle',
+    'typicalReactions',
+    'relationMemory',
+    'userRelationType',
+    'userInteractionModel',
+    'userRelationBottomLine',
+    'keyEvents',
+  ] as const;
+
+  textFields.forEach((key) => {
+    const value = fieldToText(source[key]);
+    if (value) {
+      normalized[key] = value;
+    }
+  });
+
+  const identityTags = source.identityTags;
+  if (Array.isArray(identityTags)) {
+    normalized.identityTags = identityTags.flatMap((tag) => {
+      const text = fieldToText(tag);
+      return text ? [text] : [];
+    });
+  } else {
+    const tags = fieldToText(identityTags)
+      .split(/[\n,，、；;]+/)
+      .flatMap((tag) => {
+        const trimmed = tag.trim();
+        return trimmed ? [trimmed] : [];
+      });
+    if (tags.length > 0) {
+      normalized.identityTags = tags;
+    }
+  }
+
+  const customFields = normalizeCustomFields(source.customFields as CustomField[] | undefined);
+  if (customFields) {
+    normalized.customFields = customFields;
+  }
+
+  return normalized;
+};
+
+const formatFieldLine = (label: string, value?: string) => {
+  const trimmed = (value || '').trim();
+  return trimmed ? `- **${label}**：${trimmed}` : '';
+};
+
+const buildListSection = (title: string, items: { label: string; value?: string }[]) => {
+  const lines = items.flatMap((item) => {
+    const line = formatFieldLine(item.label, item.value);
+    return line ? [line] : [];
+  });
+  if (lines.length === 0) return '';
+  return `## ${title}\n${lines.join('\n')}\n\n`;
+};
+
+const buildCustomFieldsSection = (title: string, fields: CustomField[]) => {
+  const lines = fields.flatMap((field) => {
+    const line = formatFieldLine(field.label, field.value);
+    return line ? [line] : [];
+  });
+  if (lines.length === 0) return '';
+  return `### ${title}\n${lines.join('\n')}\n\n`;
+};
+
+const compileCustomFields = (fields?: CustomField[]): string => {
+  if (!fields || fields.length === 0) return '';
+
+  const byModule: Record<string, CustomField[]> = {};
+  fields.forEach(f => {
+    if (!byModule[f.moduleId]) byModule[f.moduleId] = [];
+    byModule[f.moduleId].push(f);
+  });
+
+  const sections = Object.entries(byModule).flatMap(([moduleId, moduleFields]) => {
+    const section = buildCustomFieldsSection(MODULE_NAMES[moduleId] || moduleId, moduleFields);
+    return section ? [section] : [];
+  });
+
+  if (sections.length === 0) return '';
+  return `## 自定义补充设定\n\n${sections.join('')}`;
+};
+
+export const compileItemToMarkdown = (name: string, type: 'world_book' | 'character_card', fields: PartnerItemFields): string => {
+  fields = normalizePartnerFields(fields);
+  if (type === 'world_book') {
+    const core = buildListSection('核心设定', [
+      { label: '主题', value: fields.theme },
+      { label: '时代', value: fields.era },
+      { label: '科技水平', value: fields.techLevel },
+      { label: '魔法水平', value: fields.magicLevel },
+    ]);
+    const geography = (fields.geography || '').trim() ? `## 地理格局\n${fields.geography}\n\n` : '';
+    const keyScenes = (fields.keyScenes || '').trim() ? `## 关键场景\n${fields.keyScenes}\n\n` : '';
+    const cultural = (fields.culturalFeatures || '').trim() ? `## 文化特色\n${fields.culturalFeatures}\n\n` : '';
+    const history = (fields.history || '').trim() ? `## 历史事件\n${fields.history}\n\n` : '';
+    const conflict = (fields.conflict || '').trim() ? `## 核心矛盾\n${fields.conflict}\n\n` : '';
+    const custom = compileCustomFields(fields.customFields);
+    return `# ${name}\n\n${core}${geography}${keyScenes}${cultural}${history}${conflict}${custom}`.trim() + '\n';
+  } else {
+    const tagsStr = (fields.identityTags || []).map(t => `\`${t}\``).join(' ');
+    const basic = buildListSection('基础信息', [
+      { label: '姓名', value: name },
+      { label: '年龄', value: fields.age },
+      { label: '性别', value: fields.gender },
+      { label: '种族', value: fields.race },
+      { label: '出生地', value: fields.birthplace },
+      { label: '职业', value: fields.occupation },
+      { label: '社会阶层', value: fields.socialClass },
+    ]);
+    const identity = tagsStr ? `## 身份标签\n${tagsStr}\n\n` : '';
+    const appearance = buildListSection('外貌气质', [
+      { label: '身高体型', value: fields.heightBuild },
+      { label: '标志性特征', value: fields.iconicFeatures },
+      { label: '衣着风格', value: fields.clothingStyle },
+      { label: '整体气质', value: fields.overallVibe },
+    ]);
+    const personality = buildListSection('性格特征', [
+      { label: '外在性格', value: fields.externalPersonality },
+      { label: '内在性格', value: fields.internalPersonality },
+      { label: '核心欲望', value: fields.coreDesire },
+      { label: '恐惧和弱点', value: fields.fearWeakness },
+      { label: '道德观念', value: fields.moralValues },
+      { label: '怪癖', value: fields.quirk },
+    ]);
+    const skills = (fields.skills || '').trim() ? `## 技能专长\n${fields.skills}\n\n` : '';
+    const background = (fields.backgroundStory || '').trim() ? `## 背景故事\n${fields.backgroundStory}\n\n` : '';
+    const relationships = (fields.relationships || '').trim() ? `## 人际关系\n${fields.relationships}\n\n` : '';
+    const speaking = (fields.speakingStyle || '').trim() ? `## 说话方式\n${fields.speakingStyle}\n\n` : '';
+    const reactions = (fields.typicalReactions || '').trim() ? `## 典型反应\n${fields.typicalReactions}\n\n` : '';
+    const memory = buildListSection('角色记忆', [
+      { label: '与用户关系类型', value: fields.userRelationType },
+      { label: '与用户相处模式', value: fields.userInteractionModel },
+      { label: '与用户关系底线', value: fields.userRelationBottomLine },
+    ]);
+    const events = (fields.keyEvents || '').trim() ? `## 关键事件\n${fields.keyEvents}\n\n` : '';
+    const custom = compileCustomFields(fields.customFields);
+    return `# 角色卡：${name}\n\n${basic}${identity}${appearance}${personality}${skills}${background}${relationships}${speaking}${reactions}${memory}${events}${custom}`.trim() + '\n';
+  }
+};
+
+const PACKAGE_SCHEMA = 'museai.partner-items' as const;
+const PACKAGE_VERSION = 1 as const;
+
+const toPackageWorldBook = (item: PartnerItem): PartnerItemsPackage['worldBooks'][number] => ({
+  id: item.id,
+  name: item.name,
+  fields: normalizePartnerFields(item.fields),
+});
+
+const toPackageCharacterCard = (item: PartnerItem): PartnerItemsPackage['characterCards'][number] => ({
+  id: item.id,
+  name: item.name,
+  fields: normalizePartnerFields(item.fields),
+  worldBookId: item.worldBookId ?? null,
+});
+
+const createPartnerItemsPackage = (
+  worldBooks: PartnerItem[],
+  characterCards: PartnerItem[],
+  type: PartnerImportExportType,
+): PartnerItemsPackage => ({
+  schema: PACKAGE_SCHEMA,
+  version: PACKAGE_VERSION,
+  exportedAt: new Date().toISOString(),
+  worldBooks: type === 'world_book' ? worldBooks.map(toPackageWorldBook) : [],
+  characterCards: type === 'character_card' ? characterCards.map(toPackageCharacterCard) : [],
+});
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+);
+
+const readPackageItems = (value: unknown): PartnerItemsPackage => {
+  if (!isRecord(value) || value.schema !== PACKAGE_SCHEMA || value.version !== PACKAGE_VERSION) {
+    throw new Error('文件不是 MuseAI 世界书/角色卡导入格式');
+  }
+
+  const worldBookInputs = Array.isArray(value.worldBooks) ? value.worldBooks : [];
+  const characterCardInputs = Array.isArray(value.characterCards) ? value.characterCards : [];
+
+  const worldBooks = worldBookInputs.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    return [{
+      id: typeof item.id === 'string' ? item.id : undefined,
+      name: fieldToText(item.name) || '未命名世界书',
+      fields: normalizePartnerFields(item.fields as PartnerItemFields | undefined),
+    }];
+  });
+
+  const characterCards = characterCardInputs.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    return [{
+      id: typeof item.id === 'string' ? item.id : undefined,
+      name: fieldToText(item.name) || '未命名角色卡',
+      fields: normalizePartnerFields(item.fields as PartnerItemFields | undefined),
+      worldBookId: typeof item.worldBookId === 'string' ? item.worldBookId : null,
+    }];
+  });
+
+  return {
+    schema: PACKAGE_SCHEMA,
+    version: PACKAGE_VERSION,
+    exportedAt: typeof value.exportedAt === 'string' ? value.exportedAt : new Date().toISOString(),
+    worldBooks,
+    characterCards,
+  };
+};
+
+const parsePartnerItemsPackage = (packageText: string): PartnerItemsPackage => {
+  try {
+    return readPackageItems(JSON.parse(packageText));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('MuseAI')) {
+      throw error;
+    }
+    throw new Error('文件内容不是合法 JSON，无法导入');
+  }
+};
+
+const initialWorldBooks: PartnerItem[] = [
+  {
+    id: 'wb-initial-1',
+    name: '魔法大陆设定集',
+    type: 'world_book',
+    content: '', // Will be compiled on load or defined below
+    fields: {
+      theme: '魔法冒险 / 奇幻史诗',
+      era: '魔法工业革命时期',
+      techLevel: '蒸汽机与简单电气技术',
+      magicLevel: '高魔世界，以太广泛应用',
+      geography: '奥兰王国坐落于富庶的东部平原，雷德帝国占据崎岖的多山北部，两大势力隔着横亘大陆的“静止山脉”对峙。',
+      keyScenes: '奥兰魔法学院大图书馆、雷德帝国以太重工熔炉厂、静止山脉大峡谷前哨站',
+      culturalFeatures: '以太崇拜，视魔法为自然的神圣赐予；北部雷德帝国崇尚机械与效率，视魔法为一种可量化利用的二次能源。',
+      history: '三十年前的“以太风暴之战”，两大国死伤无数，最终在静止山脉签署停战协议。',
+      conflict: '以太资源的日渐枯竭与雷德帝国日益膨胀的领土野心，同奥兰王国保守主义的旧魔法贵族阶层之间的不可调和的矛盾。'
+    }
+  }
+];
+initialWorldBooks[0].content = compileItemToMarkdown(initialWorldBooks[0].name, 'world_book', initialWorldBooks[0].fields!);
+
+const initialCharacterCards: PartnerItem[] = [
+  {
+    id: 'cc-initial-1',
+    name: '林逸 (主角)',
+    type: 'character_card',
+    worldBookId: 'wb-initial-1',
+    content: '',
+    fields: {
+      age: '18岁',
+      gender: '男',
+      race: '人类',
+      birthplace: '奥兰王国边境小镇',
+      occupation: '奥兰魔法学院高级学员',
+      socialClass: '平民出身，凭天赋获得奖学金入学',
+      identityTags: ['穿越者', '魔法天才', '学院菁英', '求知者'],
+      heightBuild: '178cm，体型匀称偏瘦，带有长年钻研书本的学者体格',
+      iconicFeatures: '右手手背上隐约有一道淡蓝色的以太回路烙印，紧张时会微微发光',
+      clothingStyle: '常穿洗得发白但干净整洁的学院深蓝色长袍，腰间挂着一只用来装施法素材的褐色皮包',
+      overallVibe: '举手投足温和沉静，眼神中透着与年龄不符的深邃与冷静，偶尔闪过警惕',
+      externalPersonality: '温和谦逊，乐于助人，是老师眼中的好学生、同学眼中的靠谱同伴',
+      internalPersonality: '冷静克制，利益权衡明确，心防极重，对周遭一切保持敏锐的审视',
+      coreDesire: '探寻这个世界魔法底层的“第一性原理”，并找到安全回家的方法',
+      fearWeakness: '害怕自己作为“穿越者”的灵魂秘密被学院高层或神殿看穿并被当成异端净化',
+      moralValues: '尊重生命，不主动害人，但当切身安全受威胁时，会毫不犹豫地采取最直接果断的防卫与反击',
+      quirk: '思考难题时喜欢下意识地用食指轻敲太阳穴',
+      skills: '熟练掌握风系高阶魔法（气流操纵、疾风闪避、风刃）；天生拥有极强的精神感知力，可直观看到以太微粒流动',
+      backgroundStory: '一年前意外穿越到这具濒死的魔法学徒身体中。凭借原主的记忆碎片和自己的科学思维，迅速在魔法学院脱颖而出，现正卷入学院深处的以太危机中。',
+      relationships: '师导导师：雷文教授（信任且防备）；竞争对手兼好友：大小姐陆雪莹（欢喜冤家，互相欣赏）；死党：胖子唐小山。',
+      speakingStyle: '用词严谨，语气不温不火，很少使用情绪化词汇。喜欢用“根据我的观察……”、“通常而言……”开头。',
+      typicalReactions: '遭遇危机时：瞳孔微缩但绝不惊慌，退后半步利用环境展开防御，大脑高速运转推演胜率与退路；被夸奖时：礼貌微笑自谦，眼神平静无波。'
+    }
+  }
+];
+initialCharacterCards[0].content = compileItemToMarkdown(initialCharacterCards[0].name, 'character_card', initialCharacterCards[0].fields!);
+
+export const usePartnerStore = create<PartnerState>()(
+  persist<PartnerState>(
+    (set, get) => ({
+      worldBooks: initialWorldBooks,
+      characterCards: initialCharacterCards,
+      selectedId: 'wb-initial-1',
+      selectedType: 'world_book',
+
+      addWorldBook: () => set((state) => {
+        const newId = `wb-${Date.now()}`;
+        const defaultFields: PartnerItemFields = {
+          theme: '',
+          era: '',
+          techLevel: '',
+          magicLevel: '',
+          geography: '',
+          keyScenes: '',
+          culturalFeatures: '',
+          history: '',
+          conflict: ''
+        };
+        const name = '未命名世界书';
+        const content = compileItemToMarkdown(name, 'world_book', defaultFields);
+        const newItem: PartnerItem = {
+          id: newId,
+          name,
+          type: 'world_book',
+          content,
+          fields: defaultFields
+        };
+        return {
+          worldBooks: [...state.worldBooks, newItem],
+          selectedId: newId,
+          selectedType: 'world_book'
+        };
+      }),
+
+      addCharacterCard: () => set((state) => {
+        const newId = `cc-${Date.now()}`;
+        const defaultFields: PartnerItemFields = {
+          age: '',
+          gender: '',
+          race: '',
+          birthplace: '',
+          occupation: '',
+          socialClass: '',
+          identityTags: [],
+          heightBuild: '',
+          iconicFeatures: '',
+          clothingStyle: '',
+          overallVibe: '',
+          externalPersonality: '',
+          internalPersonality: '',
+          coreDesire: '',
+          fearWeakness: '',
+          moralValues: '',
+          quirk: '',
+          skills: '',
+          backgroundStory: '',
+          relationships: '',
+          speakingStyle: '',
+          typicalReactions: '',
+          relationMemory: '',
+          userRelationType: '',
+          userInteractionModel: '',
+          userRelationBottomLine: '',
+          keyEvents: ''
+        };
+        const name = '未命名角色卡';
+        const content = compileItemToMarkdown(name, 'character_card', defaultFields);
+        const newItem: PartnerItem = {
+          id: newId,
+          name,
+          type: 'character_card',
+          worldBookId: null,
+          content,
+          fields: defaultFields
+        };
+        return {
+          characterCards: [...state.characterCards, newItem],
+          selectedId: newId,
+          selectedType: 'character_card'
+        };
+      }),
+
+      selectItem: (selectedId, selectedType) => set({ selectedId, selectedType }),
+
+      deleteItem: (id, type) => set((state) => {
+        const isSelected = (
+          (type === 'world_book' && state.selectedType === 'world_book' && state.selectedId === id) ||
+          (type === 'character_card' && state.selectedType === 'character_card' && state.selectedId === id)
+        );
+        let newSelectedId = state.selectedId;
+        let newSelectedType = state.selectedType;
+
+        const nextWorldBooks = type === 'world_book'
+          ? state.worldBooks.filter((item) => item.id !== id)
+          : state.worldBooks;
+        const nextCharacterCards = type === 'world_book'
+          ? state.characterCards.map((item) => (
+            item.worldBookId === id ? { ...item, worldBookId: null } : item
+          ))
+          : state.characterCards.filter((item) => item.id !== id);
+
+        if (isSelected) {
+          if (type === 'world_book' && nextWorldBooks.length > 0) {
+            newSelectedId = nextWorldBooks[nextWorldBooks.length - 1].id;
+            newSelectedType = 'world_book';
+          } else if (type === 'character_card' && nextCharacterCards.length > 0) {
+            newSelectedId = nextCharacterCards[nextCharacterCards.length - 1].id;
+            newSelectedType = 'character_card';
+          } else if (nextWorldBooks.length > 0) {
+            newSelectedId = nextWorldBooks[nextWorldBooks.length - 1].id;
+            newSelectedType = 'world_book';
+          } else if (nextCharacterCards.length > 0) {
+            newSelectedId = nextCharacterCards[nextCharacterCards.length - 1].id;
+            newSelectedType = 'character_card';
+          } else {
+            newSelectedId = null;
+            newSelectedType = null;
+          }
+        }
+
+        return {
+          worldBooks: nextWorldBooks,
+          characterCards: nextCharacterCards,
+          selectedId: newSelectedId,
+          selectedType: newSelectedType,
+        };
+      }),
+
+      deleteWorldBookWithCharacterCards: (id) => set((state) => {
+        const removedCharacterIds = new Set(
+          state.characterCards.flatMap((item) => (
+            item.worldBookId === id ? [item.id] : []
+          ))
+        );
+        const nextWorldBooks = state.worldBooks.filter((item) => item.id !== id);
+        const nextCharacterCards = state.characterCards.filter((item) => item.worldBookId !== id);
+        const isSelectedRemoved = (
+          (state.selectedType === 'world_book' && state.selectedId === id) ||
+          (state.selectedType === 'character_card' && state.selectedId != null && removedCharacterIds.has(state.selectedId))
+        );
+
+        let selectedId = state.selectedId;
+        let selectedType = state.selectedType;
+        if (isSelectedRemoved) {
+          if (nextWorldBooks.length > 0) {
+            selectedId = nextWorldBooks[nextWorldBooks.length - 1].id;
+            selectedType = 'world_book';
+          } else if (nextCharacterCards.length > 0) {
+            selectedId = nextCharacterCards[nextCharacterCards.length - 1].id;
+            selectedType = 'character_card';
+          } else {
+            selectedId = null;
+            selectedType = null;
+          }
+        }
+
+        return {
+          worldBooks: nextWorldBooks,
+          characterCards: nextCharacterCards,
+          selectedId,
+          selectedType,
+        };
+      }),
+
+      updateItemName: (id, type, name) => set((state) => {
+        if (type === 'world_book') {
+          return {
+            worldBooks: state.worldBooks.map((item) => {
+              if (item.id === id) {
+                const nextFields = item.fields || {};
+                return {
+                  ...item,
+                  name,
+                  content: compileItemToMarkdown(name, 'world_book', nextFields)
+                };
+              }
+              return item;
+            }),
+          };
+        } else {
+          return {
+            characterCards: state.characterCards.map((item) => {
+              if (item.id === id) {
+                const nextFields = item.fields || {};
+                return {
+                  ...item,
+                  name,
+                  content: compileItemToMarkdown(name, 'character_card', nextFields)
+                };
+              }
+              return item;
+            }),
+          };
+        }
+      }),
+
+      updateItemContent: (id, type, content) => set((state) => {
+        if (type === 'world_book') {
+          return {
+            worldBooks: state.worldBooks.map((item) =>
+              item.id === id ? { ...item, content } : item
+            ),
+          };
+        } else {
+          return {
+            characterCards: state.characterCards.map((item) =>
+              item.id === id ? { ...item, content } : item
+            ),
+          };
+        }
+      }),
+
+      updateItemFields: (id, type, fields) => set((state) => {
+        if (type === 'world_book') {
+          return {
+            worldBooks: state.worldBooks.map((item) => {
+              if (item.id === id) {
+                const nextFields = normalizePartnerFields({ ...(item.fields || {}), ...fields });
+                return {
+                  ...item,
+                  fields: nextFields,
+                  content: compileItemToMarkdown(item.name, 'world_book', nextFields)
+                };
+              }
+              return item;
+            }),
+          };
+        } else {
+          return {
+            characterCards: state.characterCards.map((item) => {
+              if (item.id === id) {
+                const nextFields = normalizePartnerFields({ ...(item.fields || {}), ...fields });
+                return {
+                  ...item,
+                  fields: nextFields,
+                  content: compileItemToMarkdown(item.name, 'character_card', nextFields)
+                };
+              }
+              return item;
+            }),
+          };
+        }
+      }),
+
+      updateCharacterCardWorldBook: (id, worldBookId) => set((state) => {
+        const nextWorldBookId = worldBookId && state.worldBooks.some((item) => item.id === worldBookId)
+          ? worldBookId
+          : null;
+        return {
+          characterCards: state.characterCards.map((item) => (
+            item.id === id ? { ...item, worldBookId: nextWorldBookId } : item
+          )),
+        };
+      }),
+
+      addCustomField: (id, type, moduleId) => set((state) => {
+        const newField: CustomField = {
+          id: `cf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          moduleId,
+          label: '自定义字段',
+          value: ''
+        };
+        const updateItems = (items: PartnerItem[]) => items.map((item) => {
+          if (item.id !== id) return item;
+          const nextFields = {
+            ...(item.fields || {}),
+            customFields: [...(item.fields?.customFields || []), newField]
+          };
+          return {
+            ...item,
+            fields: nextFields,
+            content: compileItemToMarkdown(item.name, item.type, nextFields)
+          };
+        });
+        if (type === 'world_book') {
+          return { worldBooks: updateItems(state.worldBooks) };
+        }
+        return { characterCards: updateItems(state.characterCards) };
+      }),
+
+      updateCustomField: (id, type, fieldId, updates) => set((state) => {
+        const updateItems = (items: PartnerItem[]) => items.map((item) => {
+          if (item.id !== id) return item;
+          const nextCustomFields = (item.fields?.customFields || []).map((f) =>
+            f.id === fieldId ? { ...f, ...updates } : f
+          );
+          const nextFields = {
+            ...(item.fields || {}),
+            customFields: nextCustomFields
+          };
+          return {
+            ...item,
+            fields: nextFields,
+            content: compileItemToMarkdown(item.name, item.type, nextFields)
+          };
+        });
+        if (type === 'world_book') {
+          return { worldBooks: updateItems(state.worldBooks) };
+        }
+        return { characterCards: updateItems(state.characterCards) };
+      }),
+
+      removeCustomField: (id, type, fieldId) => set((state) => {
+        const updateItems = (items: PartnerItem[]) => items.map((item) => {
+          if (item.id !== id) return item;
+          const nextCustomFields = (item.fields?.customFields || []).filter((f) => f.id !== fieldId);
+          const nextFields = {
+            ...(item.fields || {}),
+            customFields: nextCustomFields
+          };
+          return {
+            ...item,
+            fields: nextFields,
+            content: compileItemToMarkdown(item.name, item.type, nextFields)
+          };
+        });
+        if (type === 'world_book') {
+          return { worldBooks: updateItems(state.worldBooks) };
+        }
+        return { characterCards: updateItems(state.characterCards) };
+      }),
+
+      importGeneratedItems: (items) => {
+        const time = Date.now();
+        const worldBookInputs = items.worldBooks || [];
+        const characterCardInputs = items.characterCards || [];
+        const worldBookIds = worldBookInputs.map((_, index) => `wb-ai-${time}-${index}`);
+        const characterCardIds = characterCardInputs.map((_, index) => `cc-ai-${time}-${index}`);
+
+        set((state) => {
+        const newWorldBooks: PartnerItem[] = worldBookInputs.map((wb, index) => {
+          const id = worldBookIds[index];
+          const fields = normalizePartnerFields(wb.fields);
+          return {
+            id,
+            name: wb.name || '未命名世界书',
+            type: 'world_book',
+            content: compileItemToMarkdown(wb.name || '未命名世界书', 'world_book', fields),
+            fields
+          };
+        });
+
+        const validWorldBookIds = new Set([...state.worldBooks, ...newWorldBooks].map((item) => item.id));
+        const newCharacterCards: PartnerItem[] = characterCardInputs.map((cc, index) => {
+          const id = characterCardIds[index];
+          const fields = normalizePartnerFields(cc.fields);
+          const worldBookId = cc.worldBookId && validWorldBookIds.has(cc.worldBookId) ? cc.worldBookId : null;
+          return {
+            id,
+            name: cc.name || '未命名角色卡',
+            type: 'character_card',
+            worldBookId,
+            content: compileItemToMarkdown(cc.name || '未命名角色卡', 'character_card', fields),
+            fields
+          };
+        });
+
+        const nextWorldBooks = [...state.worldBooks, ...newWorldBooks];
+        const nextCharacterCards = [...state.characterCards, ...newCharacterCards];
+
+        let selectedId = state.selectedId;
+        let selectedType = state.selectedType;
+
+        if (newWorldBooks.length > 0) {
+          selectedId = newWorldBooks[0].id;
+          selectedType = 'world_book';
+        } else if (newCharacterCards.length > 0) {
+          selectedId = newCharacterCards[0].id;
+          selectedType = 'character_card';
+        }
+
+        return {
+          worldBooks: nextWorldBooks,
+          characterCards: nextCharacterCards,
+          selectedId,
+          selectedType
+        };
+        });
+
+        return { worldBookIds, characterCardIds };
+      },
+
+      exportPartnerItems: (type: PartnerImportExportType) => {
+        const state = get();
+        return createPartnerItemsPackage(state.worldBooks, state.characterCards, type);
+      },
+
+      exportPartnerItem: (type: PartnerImportExportType, id: string) => {
+        const state = get();
+        const worldBooks = type === 'world_book'
+          ? state.worldBooks.filter((item) => item.id === id)
+          : [];
+        const characterCards = type === 'character_card'
+          ? state.characterCards.filter((item) => item.id === id)
+          : [];
+        return createPartnerItemsPackage(worldBooks, characterCards, type);
+      },
+
+      exportPartnerItemBundle: (type: PartnerImportExportType, id: string) => {
+        const state = get();
+        if (type === 'world_book') {
+          const worldBooks = state.worldBooks.filter((item) => item.id === id);
+          const characterCards = state.characterCards.filter((item) => item.worldBookId === id);
+          const basePackage = createPartnerItemsPackage(worldBooks, [], 'world_book');
+          return {
+            ...basePackage,
+            characterCards: characterCards.map(toPackageCharacterCard),
+          };
+        }
+        const characterCards = state.characterCards.filter((item) => item.id === id);
+        return createPartnerItemsPackage([], characterCards, 'character_card');
+      },
+
+      importPartnerItemsPackage: (packageText: string, type: PartnerImportExportType) => {
+        const parsed = parsePartnerItemsPackage(packageText);
+        if (type === 'world_book' && parsed.worldBooks.length === 0) {
+          throw new Error('导入文件中没有可导入的世界书');
+        }
+        if (type === 'character_card' && parsed.characterCards.length === 0) {
+          throw new Error('导入文件中没有可导入的角色卡');
+        }
+
+        const time = Date.now();
+        const importedWorldBooks = type === 'world_book'
+          ? parsed.worldBooks
+          : parsed.worldBooks.filter((worldBook) =>
+              parsed.characterCards.some((card) => card.worldBookId && card.worldBookId === worldBook.id)
+            );
+        const importedWorldBookSourceIds = new Set(importedWorldBooks.flatMap((worldBook) => (
+          worldBook.id ? [worldBook.id] : []
+        )));
+        const importedCharacterCards = type === 'character_card'
+          ? parsed.characterCards
+          : parsed.characterCards.filter((card) => card.worldBookId && importedWorldBookSourceIds.has(card.worldBookId));
+        const worldBookIds = importedWorldBooks.map((_, index) => `wb-import-${time}-${index}`);
+        const characterCardIds = importedCharacterCards.map((_, index) => `cc-import-${time}-${index}`);
+
+        set((state) => {
+          const sourceToLocalWorldBookId = new Map<string, string>();
+          const newWorldBooks: PartnerItem[] = importedWorldBooks.map((worldBook, index) => {
+            const id = worldBookIds[index];
+            if (worldBook.id) {
+              sourceToLocalWorldBookId.set(worldBook.id, id);
+            }
+            const fields = normalizePartnerFields(worldBook.fields);
+            return {
+              id,
+              name: worldBook.name || '未命名世界书',
+              type: 'world_book',
+              content: compileItemToMarkdown(worldBook.name || '未命名世界书', 'world_book', fields),
+              fields,
+            };
+          });
+
+          const validWorldBookIds = new Set([...state.worldBooks, ...newWorldBooks].map((item) => item.id));
+          const newCharacterCards: PartnerItem[] = importedCharacterCards.map((card, index) => {
+            const id = characterCardIds[index];
+            const fields = normalizePartnerFields(card.fields);
+            const mappedWorldBookId = card.worldBookId ? sourceToLocalWorldBookId.get(card.worldBookId) : null;
+            const candidateWorldBookId = mappedWorldBookId ?? card.worldBookId ?? null;
+            const worldBookId = candidateWorldBookId && validWorldBookIds.has(candidateWorldBookId)
+              ? candidateWorldBookId
+              : null;
+            return {
+              id,
+              name: card.name || '未命名角色卡',
+              type: 'character_card',
+              worldBookId,
+              content: compileItemToMarkdown(card.name || '未命名角色卡', 'character_card', fields),
+              fields,
+            };
+          });
+
+          return {
+            worldBooks: [...state.worldBooks, ...newWorldBooks],
+            characterCards: [...state.characterCards, ...newCharacterCards],
+            selectedId: newWorldBooks[0]?.id ?? newCharacterCards[0]?.id ?? state.selectedId,
+            selectedType: newWorldBooks.length > 0 ? 'world_book' : newCharacterCards.length > 0 ? 'character_card' : state.selectedType,
+          };
+        });
+
+        return { worldBookIds, characterCardIds };
+      },
+
+      importPartnerItemsPackages: (packageTexts: string[], type: PartnerImportExportType) => {
+        const packages: PartnerItemsPackage[] = [];
+        let failedCount = 0;
+        packageTexts.forEach((text) => {
+          try {
+            packages.push(parsePartnerItemsPackage(text));
+          } catch {
+            failedCount += 1;
+          }
+        });
+
+        const combined: PartnerItemsPackage = {
+          schema: PACKAGE_SCHEMA,
+          version: PACKAGE_VERSION,
+          exportedAt: new Date().toISOString(),
+          worldBooks: packages.flatMap((item) => item.worldBooks),
+          characterCards: packages.flatMap((item) => item.characterCards),
+        };
+
+        const result = get().importPartnerItemsPackage(JSON.stringify(combined), type);
+        return { ...result, failedCount };
+      },
+    }),
+    {
+      name: 'museai-partner-storage',
+      storage: createJSONStorage(() => createSyncStorage('partners', 'museai-partner-storage')),
+    }
+  )
+);
