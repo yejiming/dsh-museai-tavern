@@ -18,6 +18,9 @@ import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { NS, type MuseAIKey } from './locales.ts'
 import { injectMuseaiStyles } from './styles.ts'
+// MuseAI 全局样式（agent-*/adventure-* 等，提取自 MuseAI App.css），构建时
+// 经 plain-CSS 虚拟加载器注入 <style> 标签。
+import './museai.app.css'
 import { BackgroundPage } from './pages/Background.tsx'
 import { ChatPage } from './pages/Chat.tsx'
 import { AdventurePage } from './pages/Adventure.tsx'

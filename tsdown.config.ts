@@ -4,12 +4,9 @@
  * client bundle (lib/client.js), replicating the harness's shared client
  * preset (packages/client/tsdown.client.ts): a closure-factory artifact
  * calling window.__ModuleLoader__.load({id, factory}), with platform modules
- * resolved through the injected require (the loader module table) and CSS
- * Modules compiled by lightningcss and injected as plugin-owned style tags.
- *
- * The MuseAI pages ship as plain antd CSS-in-JS components plus one global
- * stylesheet; the global sheet is embedded as a string module (styles.ts)
- * injected via a plugin-owned <style> tag, so no plain-CSS pipeline is needed.
+ * resolved through the injected require (the loader module table), CSS
+ * Modules compiled by lightningcss and injected as plugin-owned style tags,
+ * and plain global CSS (museai.app.css) injected as a side-effect style tag.
  */
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -32,6 +29,9 @@ const PLATFORM_MODULES = [
 /** Virtual-id wrapper keeping module CSS away from tsdown's own css pipeline. */
 const CSS_VIRTUAL_PREFIX = '\0dsh-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
+/** Virtual-id wrapper for plain (non-module) CSS: side-effect style injection. */
+const PLAIN_CSS_VIRTUAL_PREFIX = '\0dsh-css-plain:'
+const PLAIN_CSS_VIRTUAL_SUFFIX = '.mjs'
 
 /** Node-half library: the host row and the routes row. */
 const nodeHalf: UserConfig = {
@@ -129,6 +129,34 @@ const client: UserConfig = {
         '  document.head.appendChild(tag);',
         '}',
         `export default ${JSON.stringify(classMap)};`,
+      ].join('\n')
+    },
+  }, {
+    // Plain global CSS (museai.app.css): side-effect import that injects one
+    // idempotent <style data-plugin-css> tag; the module exports nothing.
+    name: 'dsh-css-plain-inline',
+    resolveId(source: string, importer: string | undefined) {
+      if (!source.endsWith('.css') || source.endsWith('.module.css')) return null
+      const abs = importer !== undefined ? sourceAssetPath(source, importer) : source
+      return PLAIN_CSS_VIRTUAL_PREFIX + abs + PLAIN_CSS_VIRTUAL_SUFFIX
+    },
+    async load(virtualId: string) {
+      if (!virtualId.startsWith(PLAIN_CSS_VIRTUAL_PREFIX)) return null
+      const fileId = virtualId.slice(PLAIN_CSS_VIRTUAL_PREFIX.length, -PLAIN_CSS_VIRTUAL_SUFFIX.length)
+      this.addWatchFile(fileId)
+      const source = await readFile(fileId)
+      const { code } = transform({ filename: fileId, code: source, minify: true })
+      const tagId = `${PLUGIN_ID}/${basename(fileId)}`
+      return [
+        `const css = ${JSON.stringify(code.toString())};`,
+        `const tagId = ${JSON.stringify(tagId)};`,
+        `if (typeof document !== 'undefined' && document.querySelector('style[data-plugin-css=' + JSON.stringify(tagId) + ']') === null) {`,
+        `  const tag = document.createElement('style');`,
+        `  tag.dataset.plugin = ${JSON.stringify(PLUGIN_ID)};`,
+        '  tag.dataset.pluginCss = tagId;',
+        '  tag.textContent = css;',
+        '  document.head.appendChild(tag);',
+        '}',
       ].join('\n')
     },
   }],
