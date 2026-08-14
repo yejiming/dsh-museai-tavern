@@ -7,26 +7,22 @@ node_modules/
 dist/
 *.tsbuildinfo
 *.tgz
-
 # Test coverage
 coverage/
-
 # Logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
-
 # Environment
 .env
 .env.*
 !.env.example
-
 # OS
 .DS_Store
 Thumbs.db
-
 # Editors
 .idea/
 .vscode/
 .agents/
 openspec/
+prompts.md
