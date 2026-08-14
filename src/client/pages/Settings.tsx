@@ -1,7 +1,7 @@
 /**
  * MuseAI 设置页（移植自 MuseAI Settings.tsx）。
  *
- * 模型配置区已整体移除，替换为「DSH 模型选择」卡片：模型由 DeepSeek Harness
+ * 模型配置区已整体移除，替换为「模型选择」卡片：模型由 DeepSeek Harness
  * 统一管理与鉴权，页面只从 /plugins/museai/models 读取目录并让用户选择
  * 「跟随 DSH 默认模型」或指定 provider/model，不出现任何 API Key / Base URL /
  * 接口类型控件。「局域网访问」区一并删除。Agent 配置区（AgentSettingCard 网格、
@@ -26,40 +26,21 @@ import {
 } from 'antd';
 import {
   SettingOutlined,
-  BookOutlined,
   DeploymentUnitOutlined,
-  ClearOutlined,
-  ProfileOutlined,
   GlobalOutlined,
   MessageOutlined,
   CompassOutlined,
-  HeartOutlined,
 } from '@ant-design/icons';
 import { fetchModels } from '../api.ts';
 import type { ModelsResponseWire } from '../api.ts';
 import {
   useSettingsStore,
   defaultAgentConfigs,
-  defaultSystemPrompt,
-  defaultDeAiDetectorPrompt,
-  defaultDeAiRemoverPrompt,
-  defaultWorkSummaryPrompt,
-  defaultOutlineCreationPrompt,
-  defaultOutlineAssessmentPrompt,
-  defaultReverseOutlineShortPrompt,
-  defaultReverseOutlineLongSummaryPrompt,
-  defaultReverseOutlineLongFinalPrompt,
   defaultPartnerChatPrompt,
   defaultBackgroundWorldBookPrompt,
   defaultBackgroundCharacterCardPrompt,
   defaultStoryAgentPrompt,
   defaultStoryDynamicAgentPrompt,
-  defaultBookTravelMaterialAssemblerPrompt,
-  defaultBookTravelEntryDirectorPrompt,
-  defaultBookTravelPlotPlannerPrompt,
-  defaultBookTravelSceneWriterPrompt,
-  defaultBookTravelMemoryKeeperPrompt,
-  defaultBookTravelEndingJudgePrompt,
   defaultChatArchivePrompt,
   defaultStoryArchivePrompt,
   defaultSillyTavernExporterPrompt,
@@ -378,7 +359,7 @@ const AgentSettingCard: React.FC<AgentSettingCardProps> = ({
 const useSettingsView = () => {
   const store = useSettingsStore();
 
-  // ---- DSH 模型选择 ----
+  // ---- 模型选择 ----
   // 模型目录（provider 分组 + 加载失败项 + Harness 默认模型）
   const [catalog, setCatalog] = React.useState<ModelsResponseWire | null>(null);
   const [catalogError, setCatalogError] = React.useState<string | null>(null);
@@ -455,20 +436,10 @@ const useSettingsView = () => {
           getContainer={() => document.getElementById('settings-scroll-container') as HTMLElement}
           onClick={(e) => e.preventDefault()}
           items={[
-            { key: 'dsh-model-config', href: '#dsh-model-config', title: 'DSH 模型选择' },
+            { key: 'dsh-model-config', href: '#dsh-model-config', title: '模型选择' },
           ]}
         />
         <Divider style={{ margin: '12px 16px 12px -8px', borderColor: '#eae6df', minWidth: 'auto', width: 'calc(100% - 8px)' }} />
-        <Anchor
-          affix={false}
-          getContainer={() => document.getElementById('settings-scroll-container') as HTMLElement}
-          onClick={(e) => e.preventDefault()}
-          items={[
-            { key: 'works-config', href: '#works-config', title: '作品页设置' },
-            { key: 'outline-config', href: '#outline-config', title: '大纲页设置' },
-            { key: 'deai-config', href: '#deai-config', title: '去AI味页设置' },
-          ]}
-        />
         <Divider style={{ margin: '12px 16px 12px -8px', borderColor: '#eae6df', minWidth: 'auto', width: 'calc(100% - 8px)' }} />
         <Anchor
           affix={false}
@@ -478,17 +449,6 @@ const useSettingsView = () => {
             { key: 'background-config', href: '#background-config', title: '背景页设置' },
             { key: 'partner-chat-config', href: '#partner-chat-config', title: '聊天页设置' },
             { key: 'story-agent-config', href: '#story-agent-config', title: '冒险页设置' },
-            { key: 'bond-config', href: '#bond-config', title: '羁绊页设置' },
-          ]}
-        />
-        <Divider style={{ margin: '12px 16px 12px -8px', borderColor: '#eae6df', minWidth: 'auto', width: 'calc(100% - 8px)' }} />
-        <Anchor
-          affix={false}
-          getContainer={() => document.getElementById('settings-scroll-container') as HTMLElement}
-          onClick={(e) => e.preventDefault()}
-          items={[
-            { key: 'book-travel-material-config', href: '#book-travel-material-config', title: '素材页设置' },
-            { key: 'book-travel-config', href: '#book-travel-config', title: '穿书页设置' },
           ]}
         />
       </div>
@@ -501,11 +461,11 @@ const useSettingsView = () => {
             设置
           </Title>
 
-          {/* DSH 模型选择区域 */}
+          {/* 模型选择区域 */}
           <section id="dsh-model-config" style={{ marginBottom: 48 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
               <SettingOutlined style={{ fontSize: '20px', color: '#d97757' }} />
-              <Title level={4} style={{ color: '#33312e', margin: 0, fontWeight: 600, fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>DSH 模型选择</Title>
+              <Title level={4} style={{ color: '#33312e', margin: 0, fontWeight: 600, fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>模型选择</Title>
             </div>
 
             <Card
@@ -666,130 +626,15 @@ const useSettingsView = () => {
 
           <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
-          {/* 作品页设置区域 */}
-          <section id="works-config" style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-              <BookOutlined style={{ fontSize: '20px', color: '#d97757' }} />
-              <Title level={4} style={{ color: '#33312e', margin: 0, fontWeight: 600, fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>作品页设置</Title>
-            </div>
 
-            <AgentSettingCard
-              title="写文章 Agent"
-              agentId="writer"
-              defaultPrompt={defaultSystemPrompt}
-              currentPrompt={store.systemPrompt}
-              onSavePrompt={store.setSystemPrompt}
-              onResetPrompt={store.resetSystemPrompt}
-              helpText="此提示词将作为作品页写文章 Agent 初始化和长短篇创作时的核心人设设定与行为约束。"
-            />
-
-            <AgentSettingCard
-              title="作品总结 Agent"
-              agentId="workSummary"
-              defaultPrompt={defaultWorkSummaryPrompt}
-              currentPrompt={store.workSummaryPrompt}
-              onSavePrompt={store.setWorkSummaryPrompt}
-              onResetPrompt={store.resetWorkSummaryPrompt}
-              helpText="此提示词将用于评估小说商业逻辑，梳理人物、线索和分章节剧情，并提供多维度详细打分建议。"
-            />
-          </section>
 
           <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
-          {/* 大纲页设置区域 */}
-          <section id="outline-config" style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-              <ProfileOutlined style={{ fontSize: '20px', color: '#d97757' }} />
-              <Title level={4} style={{ color: '#33312e', margin: 0, fontWeight: 600, fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>大纲页设置</Title>
-            </div>
 
-            <AgentSettingCard
-              title="大纲制作 Agent"
-              agentId="outlineCreation"
-              defaultPrompt={defaultOutlineCreationPrompt}
-              currentPrompt={store.outlineCreationPrompt}
-              onSavePrompt={store.setOutlineCreationPrompt}
-              onResetPrompt={store.resetOutlineCreationPrompt}
-              helpText="此提示词将作为大纲制作 Agent 的核心规范，用于新建、改写或根据评估建议重构大纲。"
-            />
-
-            <AgentSettingCard
-              title="大纲评估 Agent"
-              agentId="outlineAssessment"
-              defaultPrompt={defaultOutlineAssessmentPrompt}
-              currentPrompt={store.outlineAssessmentPrompt}
-              onSavePrompt={store.setOutlineAssessmentPrompt}
-              onResetPrompt={store.resetOutlineAssessmentPrompt}
-              helpText="此提示词将作为大纲评估的主力人设，评估引流能力、开局钩子、情绪脑洞并进行 5 维度商业估分。"
-            />
-
-            <AgentSettingCard
-              title="AI反向分析大纲：短篇"
-              agentId="reverseOutlineShort"
-              defaultPrompt={defaultReverseOutlineShortPrompt}
-              currentPrompt={store.reverseOutlineShortPrompt}
-              onSavePrompt={store.setReverseOutlineShortPrompt}
-              onResetPrompt={store.resetReverseOutlineShortPrompt}
-              helpText="此配置用于短篇反向分析，直接读取完整文本并生成结构化大纲。"
-            />
-
-            <AgentSettingCard
-              title="AI反向分析大纲：长篇-分段摘要"
-              agentId="reverseOutlineLongSummary"
-              defaultPrompt={defaultReverseOutlineLongSummaryPrompt}
-              currentPrompt={store.reverseOutlineLongSummaryPrompt}
-              onSavePrompt={store.setReverseOutlineLongSummaryPrompt}
-              onResetPrompt={store.resetReverseOutlineLongSummaryPrompt}
-              helpText="此配置用于长篇反向分析的第一阶段，将每 10 段内容压缩成剧情概要。"
-            />
-
-            <AgentSettingCard
-              title="AI反向分析大纲：长篇-汇总大纲"
-              agentId="reverseOutlineLongFinal"
-              defaultPrompt={defaultReverseOutlineLongFinalPrompt}
-              currentPrompt={store.reverseOutlineLongFinalPrompt}
-              onSavePrompt={store.setReverseOutlineLongFinalPrompt}
-              onResetPrompt={store.resetReverseOutlineLongFinalPrompt}
-              helpText="此配置用于长篇反向分析的第二阶段，根据分段概要汇总生成最终大纲。"
-            />
-
-            <SettingsConcurrencyCard
-              agentId="reverseOutline"
-              label="AI 反向分析大纲并发数"
-              helpText="仅用于长篇文章的分布式并行分析，默认 5，建议不要超过 20。"
-              saveMessage="已保存 AI 反向分析大纲并发数"
-            />
-          </section>
 
           <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
-          {/* 去AI味页设置区域 */}
-          <section id="deai-config" style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-              <ClearOutlined style={{ fontSize: '20px', color: '#d97757' }} />
-              <Title level={4} style={{ color: '#33312e', margin: 0, fontWeight: 600, fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>去AI味页设置</Title>
-            </div>
 
-            <AgentSettingCard
-              title="检测 AI 味 Agent"
-              agentId="detector"
-              defaultPrompt={defaultDeAiDetectorPrompt}
-              currentPrompt={store.deAiDetectorPrompt}
-              onSavePrompt={store.setDeAiDetectorPrompt}
-              onResetPrompt={store.resetDeAiDetectorPrompt}
-              helpText="此提示词将作为去AI味页面的核心评测准则，检测 8 项 AI Slop 特征并对文章进行打分。"
-            />
-
-            <AgentSettingCard
-              title="去除 AI 味 Agent"
-              agentId="remover"
-              defaultPrompt={defaultDeAiRemoverPrompt}
-              currentPrompt={store.deAiRemoverPrompt}
-              onSavePrompt={store.setDeAiRemoverPrompt}
-              onResetPrompt={store.resetDeAiRemoverPrompt}
-              helpText="此提示词将作为润色去AI味的专家规范，依据分析意见小步快跑地优化文章，让人味更加突出。"
-            />
-          </section>
 
           <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
@@ -856,7 +701,15 @@ const useSettingsView = () => {
               onResetPrompt={store.resetPartnerChatPrompt}
               helpText="此提示词将作为伴侣聊天室中聊天 Agent 的核心系统提示词。结尾将自动且优雅地嵌入用户选择的世界书、角色卡和个人信息。"
             />
-          </section>
+                      <AgentSettingCard
+              title="聊天页-记忆封存师"
+              agentId="chatArchive"
+              defaultPrompt={defaultChatArchivePrompt}
+              currentPrompt={store.chatArchivePrompt}
+              onSavePrompt={store.setChatArchivePrompt}
+              onResetPrompt={store.resetChatArchivePrompt}
+              helpText="此提示词用于聊天页点击「封存记忆」时，AI 分析整场对话并提炼关系设定变化、关键事件与建议会话标题。"
+            /></section>
 
           <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
@@ -886,28 +739,7 @@ const useSettingsView = () => {
               onResetPrompt={store.resetStoryDynamicAgentPrompt}
               helpText="开启角色卡动态加载时使用此配置。此提示词会强调角色本人发言必须通过 role_play 生成。"
             />
-          </section>
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
-          {/* 羁绊页设置区域 */}
-          <section id="bond-config" style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-              <HeartOutlined style={{ fontSize: '20px', color: '#d97757' }} />
-              <Title level={4} style={{ color: '#33312e', margin: 0, fontWeight: 600, fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>羁绊页设置</Title>
-            </div>
-
-            <AgentSettingCard
-              title="聊天页-记忆封存师"
-              agentId="chatArchive"
-              defaultPrompt={defaultChatArchivePrompt}
-              currentPrompt={store.chatArchivePrompt}
-              onSavePrompt={store.setChatArchivePrompt}
-              onResetPrompt={store.resetChatArchivePrompt}
-              helpText="此提示词用于聊天页点击「封存记忆」时，AI 分析整场对话并提炼关系设定变化、关键事件与建议会话标题。"
-            />
-
-            <AgentSettingCard
+                      <AgentSettingCard
               title="冒险页-记忆封存师"
               agentId="storyArchive"
               defaultPrompt={defaultStoryArchivePrompt}
@@ -915,88 +747,19 @@ const useSettingsView = () => {
               onSavePrompt={store.setStoryArchivePrompt}
               onResetPrompt={store.resetStoryArchivePrompt}
               helpText="此提示词用于冒险页点击「封存记忆」时，AI 分析整场冒险并提炼关系设定变化、关键事件与建议会话标题。"
-            />
-          </section>
+            /></section>
 
           <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
-          {/* 素材页设置区域 */}
-          <section id="book-travel-material-config" style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-              <BookOutlined style={{ fontSize: '20px', color: '#d97757' }} />
-              <Title level={4} style={{ color: '#33312e', margin: 0, fontWeight: 600, fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>素材页设置</Title>
-            </div>
 
-            <AgentSettingCard
-              title="穿书素材装配师"
-              agentId="bookTravelMaterialAssembler"
-              defaultPrompt={defaultBookTravelMaterialAssemblerPrompt}
-              currentPrompt={store.bookTravelMaterialAssemblerPrompt}
-              onSavePrompt={store.setBookTravelMaterialAssemblerPrompt}
-              onResetPrompt={store.resetBookTravelMaterialAssemblerPrompt}
-              helpText="此提示词用于把已选大纲、世界书和角色卡整理成穿书运行所需的结构化世界模型。"
-            />
-
-            <AgentSettingCard
-              title="穿书入场导演"
-              agentId="bookTravelEntryDirector"
-              defaultPrompt={defaultBookTravelEntryDirectorPrompt}
-              currentPrompt={store.bookTravelEntryDirectorPrompt}
-              onSavePrompt={store.setBookTravelEntryDirectorPrompt}
-              onResetPrompt={store.resetBookTravelEntryDirectorPrompt}
-              helpText="此提示词用于生成穿书入口和用户可选身份，帮助用户进入所选小说世界。"
-            />
-          </section>
 
           <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
-          {/* 穿书页设置区域 */}
-          <section id="book-travel-config" style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-              <DeploymentUnitOutlined style={{ fontSize: '20px', color: '#d97757' }} />
-              <Title level={4} style={{ color: '#33312e', margin: 0, fontWeight: 600, fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>穿书页设置</Title>
-            </div>
 
-            <AgentSettingCard
-              title="穿书剧情规划师"
-              agentId="bookTravelPlotPlanner"
-              defaultPrompt={defaultBookTravelPlotPlannerPrompt}
-              currentPrompt={store.bookTravelPlotPlannerPrompt}
-              onSavePrompt={store.setBookTravelPlotPlannerPrompt}
-              onResetPrompt={store.resetBookTravelPlotPlannerPrompt}
-              helpText="此提示词用于分类用户输入、规划换场状态变化，并保持剧情因果。"
-            />
 
-            <AgentSettingCard
-              title="穿书场景写手"
-              agentId="bookTravelSceneWriter"
-              defaultPrompt={defaultBookTravelSceneWriterPrompt}
-              currentPrompt={store.bookTravelSceneWriterPrompt}
-              onSavePrompt={store.setBookTravelSceneWriterPrompt}
-              onResetPrompt={store.resetBookTravelSceneWriterPrompt}
-              helpText="此提示词用于生成当前场景、节拍、选项和沉浸式中文叙事。"
-            />
+          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
-            <AgentSettingCard
-              title="穿书记忆整理员"
-              agentId="bookTravelMemoryKeeper"
-              defaultPrompt={defaultBookTravelMemoryKeeperPrompt}
-              currentPrompt={store.bookTravelMemoryKeeperPrompt}
-              onSavePrompt={store.setBookTravelMemoryKeeperPrompt}
-              onResetPrompt={store.resetBookTravelMemoryKeeperPrompt}
-              helpText="此提示词用于压缩长线穿书历史，保留关键选择、关系变化和未解决伏笔。"
-            />
 
-            <AgentSettingCard
-              title="穿书结局裁判"
-              agentId="bookTravelEndingJudge"
-              defaultPrompt={defaultBookTravelEndingJudgePrompt}
-              currentPrompt={store.bookTravelEndingJudgePrompt}
-              onSavePrompt={store.setBookTravelEndingJudgePrompt}
-              onResetPrompt={store.resetBookTravelEndingJudgePrompt}
-              helpText="此提示词用于判断结局条件，并生成最终结局、世界线名称和偏离度总结。"
-            />
-          </section>
 
           <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
