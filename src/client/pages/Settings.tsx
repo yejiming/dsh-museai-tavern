@@ -15,7 +15,6 @@ import {
   Input,
   Button,
   InputNumber,
-  Divider,
   Typography,
   Select,
   message,
@@ -439,8 +438,6 @@ const useSettingsView = () => {
             { key: 'dsh-model-config', href: '#dsh-model-config', title: '模型选择' },
           ]}
         />
-        <Divider style={{ margin: '12px 16px 12px -8px', borderColor: '#eae6df', minWidth: 'auto', width: 'calc(100% - 8px)' }} />
-        <Divider style={{ margin: '12px 16px 12px -8px', borderColor: '#eae6df', minWidth: 'auto', width: 'calc(100% - 8px)' }} />
         <Anchor
           affix={false}
           getContainer={() => document.getElementById('settings-scroll-container') as HTMLElement}
@@ -624,20 +621,6 @@ const useSettingsView = () => {
             </Card>
           </section>
 
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
-
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
-
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
-
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
           {/* 背景页设置区域 */}
           <section id="background-config" style={{ marginBottom: 48 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
@@ -683,8 +666,6 @@ const useSettingsView = () => {
             />
           </section>
 
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
           {/* 聊天页设置区域 */}
           <section id="partner-chat-config" style={{ marginBottom: 48 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
@@ -710,8 +691,6 @@ const useSettingsView = () => {
               onResetPrompt={store.resetChatArchivePrompt}
               helpText="此提示词用于聊天页点击「封存记忆」时，AI 分析整场对话并提炼关系设定变化、关键事件与建议会话标题。"
             /></section>
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
           {/* 故事页设置区域 */}
           <section id="story-agent-config" style={{ marginBottom: 48 }}>
@@ -748,20 +727,6 @@ const useSettingsView = () => {
               onResetPrompt={store.resetStoryArchivePrompt}
               helpText="此提示词用于冒险页点击「封存记忆」时，AI 分析整场冒险并提炼关系设定变化、关键事件与建议会话标题。"
             /></section>
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
-
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
-
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
-
-
-
-          <Divider style={{ borderColor: '#eae6df', margin: '48px 0' }} />
 
         </div>
       </div>
