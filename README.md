@@ -4,7 +4,7 @@
 
 在 DeepSeek Harness 的会话标签栏「轨迹」右侧，新增一个 **MuseAI** 标签，把 MuseAI 桌面的五个页面（背景 / 聊天 / 冒险 / 羁绊 / 设置）搬进 DSH Web GUI，并让所有模型调用复用 DSH 已配置的模型 —— **不需要任何额外的 API / 密钥配置**。
 
-![MuseAI 标签](assets/tab.png)
+![MuseAI 标签](assets/screenshot.png)
 
 ## 主要功能
 
@@ -18,29 +18,33 @@
 
 ## 快速安装
 
-仓库已提交构建产物 `lib/`（不设 `prepare`/`prepack` 脚本），git、tarball 与本地目录安装都直接使用产物，无需在安装时构建。
+支持两种安装方式，均**无需本地构建**（构建产物 `lib/` 已提交进仓库，且不设
+`prepare`/`prepack` 脚本）。
+
+### 方式一：npm 安装（推荐）
 
 ```sh
-# 从本地源码目录安装（开发）
-dsh plugin --profile demo add .
+# 从 npm 安装（首次使用会初始化该 profile）
+dsh plugin --profile web add @yejiming/dsh-museai-tavern
+```
 
-# 从 git 安装
-dsh plugin --profile demo add github:omdsh-dev/dsh-museai-tavern
+### 方式二：GitHub 源码安装
 
-# 从 npm 安装
-dsh plugin --profile demo add @yejiming/dsh-museai-tavern
+```sh
+# 从 GitHub 源码安装（仓库已提交构建产物 lib/，安装时无需构建）
+dsh plugin --profile web add github:omdsh-dev/dsh-museai-tavern
 ```
 
 安装后验证：
 
 ```sh
-dsh --profile demo --dump-config   # 输出中应出现 museai 与 museai-routes 行
+dsh --profile web --dump-config   # 输出中应出现 museai 与 museai-routes 行
 ```
 
 启动 Web GUI：
 
 ```sh
-dsh --profile demo
+dsh --profile web
 ```
 
 在 Web GUI 中：打开任意会话 → 标签栏「轨迹」右侧出现 **MuseAI** → 先到「设置」页确认模型（默认跟随 DSH 默认模型，或从目录中选择）→ 在「背景」页创建世界书/角色卡 → 「聊天」页与角色对话、「冒险」页跑团、「羁绊」页查看关系。
@@ -50,7 +54,7 @@ dsh --profile demo
 ## 架构
 
 ```text
-浏览器 (apps/web)                         宿主进程 (dsh --profile demo)
+浏览器 (apps/web)                         宿主进程 (dsh --profile web)
 ┌─────────────────────────────┐          ┌──────────────────────────────────────┐
 │ MuseAI 会话视图 (conversation│  fetch   │ @yejiming/dsh-museai-tavern (宿主行) │
 │  .view, order 15)           │ ───────▶ │  · museaiStore 服务（存储域/内存）    │
@@ -106,6 +110,13 @@ pnpm typecheck    # 服务端类型检查（客户端见下）
 npx tsc -p tsconfig.client.json --noEmit   # 客户端类型检查
 pnpm test         # vitest（服务端路由/存储域 + 移植 utils）
 ```
+
+`lib/` 已提交进仓库，安装与调试（含 `dsh plugin add .`）都不需要先构建。重新
+构建产物时直接 `pnpm install` 即可：`@deepseek-ai/*` 等依赖均已发布到 npm，
+无需再从本地 DSH checkout 复制/链接 node_modules。`pnpm-workspace.yaml` 采用
+dsh 同款约定（`nodeLinker: hoisted`）；pnpm 11 的供应链策略会拦截「发布不久」
+的包与依赖构建脚本，仓库已预置 `minimumReleaseAgeExclude`（rc.6 全家桶）与
+`allowBuilds: esbuild`。
 
 ## 许可
 

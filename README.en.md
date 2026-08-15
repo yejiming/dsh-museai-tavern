@@ -16,29 +16,33 @@ Adds a **MuseAI** tab to the right of the Trajectory tab in DeepSeek Harness's c
 
 ## Quick install
 
-The repo commits the built `lib/` artifacts (no `prepare`/`prepack` scripts), so git, tarball, and local-directory installs use the artifacts directly — no build needed at install time.
+Two install methods, neither requires a local build (the prebuilt output in
+`lib/` is committed, and no `prepare`/`prepack` scripts are declared).
+
+### Method 1: npm (recommended)
 
 ```sh
-# from the local source directory (development)
-dsh plugin --profile demo add .
+# Install from npm (initializes the profile on first use)
+dsh plugin --profile web add @yejiming/dsh-museai-tavern
+```
 
-# from git
-dsh plugin --profile demo add github:omdsh-dev/dsh-museai-tavern
+### Method 2: GitHub source
 
-# from npm
-dsh plugin --profile demo add @yejiming/dsh-museai-tavern
+```sh
+# Install from the GitHub source (lib/ is committed, no build at install time)
+dsh plugin --profile web add github:omdsh-dev/dsh-museai-tavern
 ```
 
 Verify after install:
 
 ```sh
-dsh --profile demo --dump-config   # should list the museai and museai-routes rows
+dsh --profile web --dump-config   # should list the museai and museai-routes rows
 ```
 
 Start the web GUI:
 
 ```sh
-dsh --profile demo
+dsh --profile web
 ```
 
 In the web GUI: open any session → the **MuseAI** tab appears right of Trajectory → check the Settings page for the model (defaults to following DSH's default model, or pick from the catalog) → create a world book / character card in Background → chat with a character, run an adventure, inspect relationships in Bond.
@@ -48,7 +52,7 @@ In the web GUI: open any session → the **MuseAI** tab appears right of Traject
 ## Architecture
 
 ```text
-Browser (apps/web)                       Host process (dsh --profile demo)
+Browser (apps/web)                       Host process (dsh --profile web)
 ┌─────────────────────────────┐          ┌──────────────────────────────────────┐
 │ MuseAI view (conversation.  │  fetch   │ @yejiming/dsh-museai-tavern (host row)│
 │  .view, order 15)           │ ───────▶ │  · museaiStore service (domain/mem)  │
@@ -104,6 +108,15 @@ pnpm typecheck    # server-side typecheck (client below)
 npx tsc -p tsconfig.client.json --noEmit   # client typecheck
 pnpm test         # vitest (server routes / storage domain + ported utils)
 ```
+
+`lib/` is committed, so installing and debugging (including `dsh plugin add .`)
+never requires a build. To rebuild the artifacts, just run `pnpm install`: all
+`@deepseek-ai/*` dependencies are published on npm, so there is no need to copy
+or symlink `node_modules` from a local DSH checkout anymore.
+`pnpm-workspace.yaml` follows the dsh convention (`nodeLinker: hoisted`); pnpm
+11's supply-chain policy blocks freshly published packages and dependency build
+scripts, so the repository pre-declares `minimumReleaseAgeExclude` (the rc.6
+family) and `allowBuilds: esbuild`.
 
 ## License
 

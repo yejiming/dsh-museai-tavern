@@ -2,12 +2,18 @@
   "name": "@yejiming/dsh-museai-tavern",
   "description": "MuseAI tavern for the dsh web GUI: a MuseAI conversation-view tab (right of Trajectory) with background / chat / adventure / bond / settings pages ported from MuseAI, running entirely on models configured in DeepSeek Harness (no separate API config)",
   "version": "0.0.1",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/omdsh-dev/dsh-museai-tavern.git"
+  },
+  "bugs": {
+    "url": "https://github.com/omdsh-dev/dsh-museai-tavern/issues"
   },
   "exports": {
     ".": {
