@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
+import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import {
   handleChat,
   handleComplete,
@@ -16,6 +17,8 @@ import {
   handleSessionList,
   handleSession,
   chatBodySchema,
+  assemble,
+  buildGenerateOptions,
 } from '../src/routes.ts'
 import type { StoreBlob } from '../src/domain.ts'
 
@@ -82,7 +85,7 @@ interface MockLlm {
   listProviders(): { id: string; name: string }[]
   listModels(provider: string): Promise<{ id: string; name: string }[]>
   resolveModelInfo(): Promise<{ reasoning?: { efforts: { id: string }[] } }>
-  stream(options: unknown): AsyncIterable<never>
+  stream(options: GenerateOptions): AsyncIterable<StreamChunk>
 }
 
 interface MockStore {
@@ -195,7 +198,7 @@ describe('handleChat', () => {
       yield { type: 'reasoning-delta', index: 1, text: '想' }
       yield { type: 'block-end', index: 0, block: { type: 'text', text: '你好世界' } }
       yield { type: 'block-end', index: 1, block: { type: 'reasoning', text: '想' } }
-      yield { type: 'finish', kind: 'stop' }
+      yield { type: 'finish', reason: { kind: 'stop' } }
     }
     const req = new FakeReq(JSON.stringify({
       followDefault: true,
@@ -226,6 +229,23 @@ describe('handleChat', () => {
     await handleChat(ctx, asReq(req), asRes(res), 5000)
     const events = res.body.split('\n').filter(Boolean).map((line) => JSON.parse(line))
     expect(events.at(-1)).toMatchObject({ event: 'error', message: 'provider 500' })
+  })
+
+  it.each(['error', 'aborted'] as const)('handles a DSH 0.2 %s finish without emitting done', async (kind) => {
+    mockLlm.stream = async function* () {
+      yield { type: 'text-delta', index: 0, text: 'partial' }
+      yield { type: 'finish', reason: { kind, failure: { message: 'provider stopped', code: 'TEST' } } }
+    }
+    const res = new FakeRes()
+    await handleChat(ctx, asReq(new FakeReq(JSON.stringify({
+      followDefault: true,
+      messages: [{ role: 'user', content: 'hi' }],
+    }))), asRes(res), 5000)
+    const events = res.body.split('\n').filter(Boolean).map((line) => JSON.parse(line))
+    expect(events.at(-1)).toMatchObject({ event: kind })
+    if (kind === 'error') expect(events.at(-1).message).toBe('provider stopped')
+    expect(events.some((event) => event.event === 'done')).toBe(false)
+    expect(res.ended).toBe(true)
   })
 
   it('emits aborted when the client disconnects mid-stream', async () => {
@@ -264,7 +284,7 @@ describe('handleComplete', () => {
       yield { type: 'block-start', index: 0, blockType: 'text' }
       yield { type: 'text-delta', index: 0, text: '结果' }
       yield { type: 'block-end', index: 0, block: { type: 'text', text: '结果' } }
-      yield { type: 'finish', kind: 'stop' }
+      yield { type: 'finish', reason: { kind: 'stop' } }
     }
     const req = new FakeReq(JSON.stringify({
       followDefault: true,
@@ -277,6 +297,20 @@ describe('handleComplete', () => {
     await handleComplete(ctx, asReq(req), asRes(res), 5000)
     expect(res.status).toBe(200)
     expect(JSON.parse(res.body)).toEqual({ text: '结果', reasoning: '' })
+  })
+
+  it.each(['error', 'aborted'] as const)('rejects a DSH 0.2 %s finish instead of returning partial output', async (kind) => {
+    mockLlm.stream = async function* () {
+      yield { type: 'text-delta', index: 0, text: 'partial' }
+      yield { type: 'finish', reason: { kind, failure: { message: 'provider stopped', code: 'TEST' } } }
+    }
+    const res = new FakeRes()
+    await handleComplete(ctx, asReq(new FakeReq(JSON.stringify({
+      followDefault: true,
+      messages: [{ role: 'user', content: 'hi' }],
+    }))), asRes(res), 5000)
+    expect(res.status).toBe(500)
+    expect(JSON.parse(res.body)).toEqual({ error: 'provider stopped' })
   })
 
   it('rejects when the model target is unresolvable', async () => {
@@ -388,5 +422,35 @@ describe('chatBodySchema', () => {
     if (parsed.success) {
       expect(parsed.data).not.toHaveProperty('frequencyPenalty')
     }
+  })
+})
+
+describe('DSH 0.2 model bridge', () => {
+  it('preserves message roles and request controls with the default model', async () => {
+    const signal = new AbortController().signal
+    const options = await buildGenerateOptions(ctx, {
+      followDefault: true,
+      system: 'system prompt',
+      messages: [{ role: 'user', content: 'hello' }, { role: 'assistant', content: 'world' }],
+      temperature: 0.7,
+      maxTokens: 128,
+      thinkingDepth: 'high',
+    }, signal)
+    expect(options).toMatchObject({
+      provider: 'deepseek-official', model: 'deepseek-v4-flash',
+      system: 'system prompt', temperature: 0.7, maxTokens: 128, reasoningEffort: 'high', signal,
+      messages: [
+        { role: 'user', content: [{ type: 'text', text: 'hello' }] },
+        { role: 'assistant', content: [{ type: 'text', text: 'world' }] },
+      ],
+    })
+  })
+
+  it('recognizes the new max-tokens finish shape', async () => {
+    async function* chunks(): AsyncIterable<StreamChunk> {
+      yield { type: 'text-delta', index: 0, text: 'partial' }
+      yield { type: 'finish', reason: { kind: 'max-tokens' } }
+    }
+    expect(await assemble(chunks())).toMatchObject({ text: 'partial', truncated: true })
   })
 })

@@ -16,6 +16,9 @@ Adds a **MuseAI** tab to the right of the Trajectory tab in DeepSeek Harness's c
 
 ## Quick install
 
+Requires **DeepSeek Harness `>=0.2.0-rc.1`** (including `0.2.0-rc.2`).
+Check your installed version with `dsh --version`; `0.1.x` is no longer supported.
+
 Two install methods, neither requires a local build (the prebuilt output in
 `lib/` is committed, and no `prepare`/`prepack` scripts are declared).
 
@@ -30,7 +33,7 @@ dsh plugin --profile web add @yejiming/dsh-museai-tavern
 
 ```sh
 # Install from the GitHub source (lib/ is committed, no build at install time)
-dsh plugin --profile web add github:omdsh-dev/dsh-museai-tavern
+dsh plugin --profile web add github:yejiming/dsh-museai-tavern
 ```
 
 Verify after install:
@@ -115,8 +118,14 @@ never requires a build. To rebuild the artifacts, just run `pnpm install`: all
 or symlink `node_modules` from a local DSH checkout anymore.
 `pnpm-workspace.yaml` follows the dsh convention (`nodeLinker: hoisted`); pnpm
 11's supply-chain policy blocks freshly published packages and dependency build
-scripts, so the repository pre-declares `minimumReleaseAgeExclude` (the rc.6
-family) and `allowBuilds: esbuild`.
+scripts, so the repository pre-declares `minimumReleaseAgeExclude` (`0.2.0-rc.1`
+and its companion dependencies) and `allowBuilds: esbuild`.
+
+Development dependencies pin the minimum supported version, `0.2.0-rc.1`, while
+host peer dependencies accept `>=0.2.0-rc.1`. The client uses Cordis `Context`
+and `dsh-client-ui-renderer`; the model bridge handles errors and cancellation
+reported through `finish.reason`. After changing source files, run `pnpm build`
+and include `lib/` with the changes so source installs receive the updated artifacts.
 
 ## License
 

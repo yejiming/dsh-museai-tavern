@@ -11,9 +11,11 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import vm from 'node:vm'
+import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 
 let bundle: string
 let registration: { id: string; factory: (require: (id: string) => unknown) => unknown } | null = null
+let client: { apply: (ctx: unknown) => void; inject: string[] }
 
 /** Minimal React surface antd/rc-* touch at module scope during evaluation. */
 const reactStub = {
@@ -90,13 +92,42 @@ describe('lib/client.js bundle', () => {
       if (id === 'react-dom' || id === 'react-dom/client') {
         return { render: () => {}, createRoot: () => ({ render: () => {} }) }
       }
-      return {}
+      throw new Error(`Browser bundle requires an unavailable platform module: ${id}`)
     }
-    const exported = registration!.factory(requireStub) as {
-      apply: unknown
-      inject: unknown
-    }
-    expect(typeof exported.apply).toBe('function')
-    expect(exported.inject).toEqual(['slots', 'locale'])
+    client = registration!.factory(requireStub) as typeof client
+    expect(typeof client.apply).toBe('function')
+    expect(client.inject).toEqual(['slots', 'locale'])
+  })
+
+  it('registers and disposes the tab with the real DSH 0.2 slot core', () => {
+    const slots = new SlotCore()
+    const disposeShell = slots.register({
+      name: 'root',
+      children: { 'conversation.view': { kind: 'list', scope: 'session' } },
+    }, () => null)
+    const effects: Array<() => void> = []
+    const dictionaries = new Map<string, Record<string, Record<string, string>>>()
+    client.apply({
+      effect: (setup: () => () => void) => effects.push(setup()),
+      slots: {
+        inject: (_key: string, setup: () => () => void) => effects.push(setup()),
+        register: slots.register.bind(slots),
+      },
+      locale: {
+        register: (ns: string, dicts: Record<string, Record<string, string>>) => {
+          dictionaries.set(ns, dicts)
+          return () => dictionaries.delete(ns)
+        },
+        bind: (ns: string) => (key: string) => dictionaries.get(ns)?.en[key],
+      },
+    })
+    const entries = slots.entriesOfSlot('conversation.view')
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({ options: { id: 'museai', order: 15 }, locale: 'museai' })
+    expect((entries[0].options.label as () => string)()).toBe('MuseAI')
+    for (const dispose of effects.reverse()) dispose()
+    expect(slots.entriesOfSlot('conversation.view')).toHaveLength(0)
+    expect(dictionaries.size).toBe(0)
+    disposeShell()
   })
 })

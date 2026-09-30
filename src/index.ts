@@ -9,7 +9,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import z from 'schemastery'
+import z from '@deepseek-ai/schemastery'
 import { createMuseaiStore, type MuseaiStore } from './domain.ts'
 
 /** Cordis plugin name (diagnostics only). */

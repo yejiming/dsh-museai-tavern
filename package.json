@@ -1,7 +1,7 @@
 {
   "name": "@yejiming/dsh-museai-tavern",
   "description": "MuseAI tavern for the dsh web GUI: a MuseAI conversation-view tab (right of Trajectory) with background / chat / adventure / bond / settings pages ported from MuseAI, running entirely on models configured in DeepSeek Harness (no separate API config)",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publishConfig": {
     "access": "public"
   },
@@ -10,10 +10,10 @@
   "types": "lib/types/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/omdsh-dev/dsh-museai-tavern.git"
+    "url": "git+https://github.com/yejiming/dsh-museai-tavern.git"
   },
   "bugs": {
-    "url": "https://github.com/omdsh-dev/dsh-museai-tavern/issues"
+    "url": "https://github.com/yejiming/dsh-museai-tavern/issues"
   },
   "exports": {
     ".": {
@@ -39,7 +39,7 @@
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-renderer",
         "@deepseek-ai/dsh-client-ui-conversation"
       ],
       "platform": "web"
@@ -58,37 +58,38 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "schemastery": "^3.18.0"
+    "@deepseek-ai/schemastery": "~3.18.4",
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-agent-default-model": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-invariants": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-storage-domain": "^0.1.0-rc.6",
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-agent-default-model": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-host-webserver": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-invariants": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-llm": ">=0.2.0-rc.1",
+    "@deepseek-ai/dsh-storage-domain": ">=0.2.0-rc.1",
     "react": "^18.2.0"
   },
   "devDependencies": {
     "@ant-design/icons": "^6.2.3",
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-agent-default-model": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-invariants": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-storage": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-storage-domain": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-storage-json": "0.1.0-rc.6",
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-agent-default-model": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-locale": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-invariants": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-storage": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-storage-domain": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-storage-json": "0.2.0-rc.1",
     "@types/node": "^25.0.0",
     "@types/react": "~18.3.1",
     "antd": "^6.4.3",

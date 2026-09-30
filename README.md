@@ -18,6 +18,9 @@
 
 ## 快速安装
 
+要求 **DeepSeek Harness `>=0.2.0-rc.1`**（包括 `0.2.0-rc.2`）。可用
+`dsh --version` 检查本机版本；旧的 `0.1.x` 不再支持。
+
 支持两种安装方式，均**无需本地构建**（构建产物 `lib/` 已提交进仓库，且不设
 `prepare`/`prepack` 脚本）。
 
@@ -32,7 +35,7 @@ dsh plugin --profile web add @yejiming/dsh-museai-tavern
 
 ```sh
 # 从 GitHub 源码安装（仓库已提交构建产物 lib/，安装时无需构建）
-dsh plugin --profile web add github:omdsh-dev/dsh-museai-tavern
+dsh plugin --profile web add github:yejiming/dsh-museai-tavern
 ```
 
 安装后验证：
@@ -115,8 +118,13 @@ pnpm test         # vitest（服务端路由/存储域 + 移植 utils）
 构建产物时直接 `pnpm install` 即可：`@deepseek-ai/*` 等依赖均已发布到 npm，
 无需再从本地 DSH checkout 复制/链接 node_modules。`pnpm-workspace.yaml` 采用
 dsh 同款约定（`nodeLinker: hoisted`）；pnpm 11 的供应链策略会拦截「发布不久」
-的包与依赖构建脚本，仓库已预置 `minimumReleaseAgeExclude`（rc.6 全家桶）与
+的包与依赖构建脚本，仓库已预置 `minimumReleaseAgeExclude`（`0.2.0-rc.1` 及其配套依赖）与
 `allowBuilds: esbuild`。
+
+开发依赖固定在最低兼容版本 `0.2.0-rc.1`，宿主 peer 依赖声明为
+`>=0.2.0-rc.1`。客户端使用 Cordis `Context` 与新版
+`dsh-client-ui-renderer` 服务；模型桥识别新版 `finish.reason` 中的错误与取消状态。
+修改源码后需运行 `pnpm build` 并一并提交 `lib/`，确保源码安装使用最新产物。
 
 ## 许可
 

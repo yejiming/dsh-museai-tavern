@@ -34,12 +34,13 @@ import {
   createUserMessage,
 } from '@deepseek-ai/dsh-llm'
 import type {
+  FinishReason,
   GenerateOptions,
   LlmModelInfo,
   Message,
   StreamChunk,
 } from '@deepseek-ai/dsh-llm'
-import z from 'schemastery'
+import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
 // Type-only: pulls the ctx.museaiStore merge (the main museai row) and the
 // service faces of the webserver / llm / default-model into this program.
@@ -226,6 +227,7 @@ export async function assemble(chunks: AsyncIterable<StreamChunk>): Promise<{
 }> {
   const assembler = new BlockAssembler()
   for await (const chunk of chunks) assembler.push(chunk)
+  assertSuccessfulFinish(assembler.finish)
   const blocks = assembler.blocks()
   const text = blocks
     .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
@@ -238,6 +240,12 @@ export async function assemble(chunks: AsyncIterable<StreamChunk>): Promise<{
     .join(' ')
     .trim()
   return { text, reasoning, truncated: assembler.finish.kind === 'max-tokens', usage: assembler.usage }
+}
+
+/** DSH 0.2 reports adapter failures as terminal chunks, not rejected streams. */
+function assertSuccessfulFinish(finish: FinishReason): void {
+  if (finish.kind === 'error') throw new Error(finish.failure.message)
+  if (finish.kind === 'aborted') throw new DOMException(finish.failure.message, 'AbortError')
 }
 
 /**
@@ -372,6 +380,7 @@ export async function handleChat(ctx: Context, req: IncomingMessage, res: Server
       }
       assembler.push(chunk)
     }
+    assertSuccessfulFinish(assembler.finish)
     const blocks = assembler.blocks()
     const text = blocks
       .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
@@ -390,7 +399,7 @@ export async function handleChat(ctx: Context, req: IncomingMessage, res: Server
       reasoning,
     })
   } catch (error) {
-    if (controller.signal.aborted) {
+    if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
       emit({ event: 'aborted', runId })
     } else {
       emit({ event: 'error', runId, message: error instanceof Error ? error.message : String(error) })

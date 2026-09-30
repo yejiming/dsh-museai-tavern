@@ -27,7 +27,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Context } from '@deepseek-ai/cordis';
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm';
-import z from 'schemastery';
+import z from '@deepseek-ai/schemastery';
 import { z as zod } from 'zod';
 /** Cordis plugin name (diagnostics only). */
 export declare const name = "museai-routes";
@@ -52,17 +52,17 @@ export interface Config {
     maxCompleteChars: number;
 }
 /** Loader schema with deployment defaults (no library defaults). */
-export declare const Config: z<Schemastery.ObjectS<{
-    chatTimeoutMs: z<number, number>;
-    completeTimeoutMs: z<number, number>;
-    modelsTimeoutMs: z<number, number>;
-    maxCompleteChars: z<number, number>;
-}>, Schemastery.ObjectT<{
-    chatTimeoutMs: z<number, number>;
-    completeTimeoutMs: z<number, number>;
-    modelsTimeoutMs: z<number, number>;
-    maxCompleteChars: z<number, number>;
-}>>;
+export declare const Config: z<Schemastery.ObjectS<NoInfer<{
+    chatTimeoutMs: z<number, number, "defined">;
+    completeTimeoutMs: z<number, number, "defined">;
+    modelsTimeoutMs: z<number, number, "defined">;
+    maxCompleteChars: z<number, number, "defined">;
+}>>, Schemastery.ObjectT<NoInfer<{
+    chatTimeoutMs: z<number, number, "defined">;
+    completeTimeoutMs: z<number, number, "defined">;
+    modelsTimeoutMs: z<number, number, "defined">;
+    maxCompleteChars: z<number, number, "defined">;
+}>>, "plain">;
 /** One wire message of a chat/completion request. */
 export interface WireMessage {
     role: 'user' | 'assistant';

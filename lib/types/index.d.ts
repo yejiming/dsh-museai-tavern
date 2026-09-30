@@ -8,7 +8,7 @@
  * @module @yejiming/dsh-museai-tavern
  */
 import type { Context } from '@deepseek-ai/cordis';
-import z from 'schemastery';
+import z from '@deepseek-ai/schemastery';
 /** Cordis plugin name (diagnostics only). */
 export declare const name = "museai";
 /** Services required before the store can serve. */
@@ -29,17 +29,17 @@ export interface Config {
     maxCompleteChars: number;
 }
 /** Loader schema with deployment defaults (no library defaults). */
-export declare const Config: z<Schemastery.ObjectS<{
-    chatTimeoutMs: z<number, number>;
-    completeTimeoutMs: z<number, number>;
-    modelsTimeoutMs: z<number, number>;
-    maxCompleteChars: z<number, number>;
-}>, Schemastery.ObjectT<{
-    chatTimeoutMs: z<number, number>;
-    completeTimeoutMs: z<number, number>;
-    modelsTimeoutMs: z<number, number>;
-    maxCompleteChars: z<number, number>;
-}>>;
+export declare const Config: z<Schemastery.ObjectS<NoInfer<{
+    chatTimeoutMs: z<number, number, "defined">;
+    completeTimeoutMs: z<number, number, "defined">;
+    modelsTimeoutMs: z<number, number, "defined">;
+    maxCompleteChars: z<number, number, "defined">;
+}>>, Schemastery.ObjectT<NoInfer<{
+    chatTimeoutMs: z<number, number, "defined">;
+    completeTimeoutMs: z<number, number, "defined">;
+    modelsTimeoutMs: z<number, number, "defined">;
+    maxCompleteChars: z<number, number, "defined">;
+}>>, "plain">;
 /**
  * Mount the museai host row: open the storage domain (or fall back to
  * memory) and expose the store service.

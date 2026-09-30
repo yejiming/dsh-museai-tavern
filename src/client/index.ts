@@ -7,7 +7,9 @@
  * reports.
  * @module @yejiming/dsh-museai-tavern/client
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+// The renderer owns ctx.slots in DSH >= 0.2.0-rc.1.
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale) into this program.
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ui-conversation view-slot declaration (conversation.view)
